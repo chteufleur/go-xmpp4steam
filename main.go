@@ -26,7 +26,7 @@ var (
 func init() {
 	err := cfg.Load(configurationFilePath, mapConfig)
   if err != nil {
-		log.Fatal("Failed to load configuration file located at %s", configurationFilePath, err)
+		log.Fatal("Failed to load configuration file.", err)
 	}
 
   // XMPP config
