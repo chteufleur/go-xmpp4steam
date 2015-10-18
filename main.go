@@ -19,25 +19,26 @@ const (
 )
 
 var (
-  mymap = make(map[string]string)
+  mapConfig = make(map[string]string)
+  SetSteamId = make(map[string]struct{})
 )
 
 func init() {
-	err := cfg.Load(configurationFilePath, mymap)
+	err := cfg.Load(configurationFilePath, mapConfig)
   if err != nil {
 		log.Fatal("Failed to load configuration file located at %s", configurationFilePath, err)
 	}
 
   // XMPP config
-  xmpp.Addr = mymap["xmpp_server_address"]+":"+mymap["xmpp_server_port"]
-  xmpp.JidStr = mymap["xmpp_hostname"]
-  xmpp.Secret = mymap["xmpp_secret"]
-  xmpp.PreferedJID = mymap["xmpp_authorized_jid"]
+  xmpp.Addr = mapConfig["xmpp_server_address"]+":"+mapConfig["xmpp_server_port"]
+  xmpp.JidStr = mapConfig["xmpp_hostname"]
+  xmpp.Secret = mapConfig["xmpp_secret"]
+  xmpp.PreferedJID = mapConfig["xmpp_authorized_jid"]
 
   // Steam config
-  steam.Username = mymap["steam_login"]
-  steam.Password = mymap["steam_password"]
-  steam.AuthCode = mymap["steam_auth_code"]
+  steam.Username = mapConfig["steam_login"]
+  steam.Password = mapConfig["steam_password"]
+  steam.AuthCode = mapConfig["steam_auth_code"]
 }
 
 func main() {
@@ -127,6 +128,10 @@ func gatewaySteamXmppAction() {
 
     case steam.ActionDisconnected:
       xmpp.Disconnect()
+      for sid, _ := range SetSteamId {
+        xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr)
+        delete(SetSteamId, sid)
+      }
     }
   }
 }
@@ -139,12 +144,13 @@ func gatewaySteamXmppMessage() {
   }
 }
 
-
 func gatewaySteamXmppPresence() {
   for {
     // name := steam.ChanPresence
     steamId := <- steam.ChanPresence
     stat := <- steam.ChanPresenceSteam
+
+    SetSteamId[steamId] = struct{}{}
 
     var status string
   	var tpye string

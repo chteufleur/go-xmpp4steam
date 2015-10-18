@@ -47,28 +47,10 @@ var (
   ChanAction = make(chan string)
 )
 
-func init() {
-	var sentryHash steam.SentryHash
-	sentryHash, err := ioutil.ReadFile(sentryFile)
-
-  myLoginInfo.Username = Username
-  myLoginInfo.Password = Password
-
-	// TODO think again
-	if err == nil {
-		myLoginInfo.SentryFileHash = sentryHash
-		log.Printf("%sAuthentification by SentryFileHash", LogDebug)
-	} else if AuthCode != "" {
-  	myLoginInfo.AuthCode = AuthCode
-		log.Printf("%sAuthentification by AuthCode", LogDebug)
-	} else {
-		log.Printf("%sFirst authentification", LogDebug)
-	}
-}
-
 
 func Run() {
 	log.Printf("%sRunning", LogInfo)
+	setLoginInfos()
 	client = steam.NewClient()
 	client.ConnectionTimeout = 10 * time.Second
 
@@ -123,6 +105,27 @@ func mainSteam() {
 		}
 	}
 }
+
+
+func setLoginInfos() {
+	var sentryHash steam.SentryHash
+	sentryHash, err := ioutil.ReadFile(sentryFile)
+
+  myLoginInfo.Username = Username
+  myLoginInfo.Password = Password
+
+	// TODO think again
+	if err == nil {
+		myLoginInfo.SentryFileHash = sentryHash
+		log.Printf("%sAuthentification by SentryFileHash", LogDebug)
+	} else if AuthCode != "" {
+  	myLoginInfo.AuthCode = AuthCode
+		log.Printf("%sAuthentification by AuthCode", LogDebug)
+	} else {
+		log.Printf("%sFirst authentification", LogDebug)
+	}
+}
+
 
 func IsConnected() bool {
 	return client.Connected()
