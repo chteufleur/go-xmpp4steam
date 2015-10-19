@@ -39,6 +39,8 @@ func init() {
   steam.Username = mapConfig["steam_login"]
   steam.Password = mapConfig["steam_password"]
   steam.AuthCode = mapConfig["steam_auth_code"]
+
+  xmpp.Version = "0.1.0"
 }
 
 func main() {
@@ -52,9 +54,9 @@ func main() {
   go gatewaySteamXmppPresence()
 
   go steam.Run()
-  go xmpp.Run()
+  xmpp.Run()
 
-  inputStop()
+  // inputStop()
 
   steam.Disconnect()
   xmpp.Disconnect()

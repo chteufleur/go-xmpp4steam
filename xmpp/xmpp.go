@@ -44,6 +44,8 @@ var (
   ChanAction = make(chan string)
 
   CurrentStatus = Status_offline
+
+  Version = ""
 )
 
 
@@ -102,7 +104,7 @@ func Disconnect() {
 }
 
 func SendPresence(status, tpye string) {
-  comp.Out <- xmpp.Presence{To: PreferedJID, From: jid.Domain, Show: status, Type: tpye}
+  comp.Out <- xmpp.Presence{To: PreferedJID, From: jid.Domain, Show: status, Type: tpye, Status: "go-xmpp4steam v"+Version}
 }
 
 func SendPresenceFrom(status, tpye, from string) {
