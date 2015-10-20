@@ -24,7 +24,7 @@ var (
 )
 
 func init() {
-	xmpp.Version = "0.1.0"
+	xmpp.Version = "0.1.1"
 
 	err := cfg.Load(configurationFilePath, mapConfig)
 	if err != nil {
