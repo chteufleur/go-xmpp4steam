@@ -37,6 +37,4 @@ The first time, let the variable ``steam_auth_code`` empty. After the first run 
 
 
 ## Help
-To get any help, please visit the XMPP conference room :
-  * [With your own XMPP client](xmpp:go-xmpp4steam@muc.kingpenguin.tk)
-  * [With your browser](https://jappix.kingpenguin.tk/?r=go-xmpp4steam@muc.kingpenguin.tk)
+To get any help, please visit the XMPP conference room at ``go-xmpp4steam@muc.kingpenguin.tk`` with your prefered client, or [with your browser](https://jappix.kingpenguin.tk/?r=go-xmpp4steam@muc.kingpenguin.tk).
