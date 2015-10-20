@@ -54,7 +54,7 @@ func Run() {
 	stream = must(xmpp.NewStream(Addr, &xmpp.StreamConfig{LogStanzas: true})).(*xmpp.Stream)
 	comp = must(xmpp.NewComponentXMPP(stream, jid, Secret)).(*xmpp.XMPP)
 
-	SendPresence(Status_online, Type_available)
+	// SendPresence(Status_online, Type_available)
 
 	mainXMPP()
 }
@@ -63,12 +63,13 @@ func mainXMPP() {
 	for x := range comp.In {
 		switch v := x.(type) {
 		case *xmpp.Presence:
-			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.To == JidStr {
+			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.To == JidStr && v.Type != "probe" {
 				if v.Type == Type_unavailable {
+					log.Printf("%sPresence reçut unavailable", LogDebug)
 					Disconnect()
 					ChanAction <- ActionDeconnexion
 				} else {
-					// SendPresence(v.Show, v.Type)
+					log.Printf("%sPresence reçut", LogDebug)
 					CurrentStatus = v.Show
 					ChanAction <- ActionConnexion
 				}

@@ -24,6 +24,8 @@ var (
 )
 
 func init() {
+	xmpp.Version = "0.1.0"
+
 	err := cfg.Load(configurationFilePath, mapConfig)
 	if err != nil {
 		log.Fatal("Failed to load configuration file.", err)
@@ -39,8 +41,6 @@ func init() {
 	steam.Username = mapConfig["steam_login"]
 	steam.Password = mapConfig["steam_password"]
 	steam.AuthCode = mapConfig["steam_auth_code"]
-
-	xmpp.Version = "0.1.0"
 }
 
 func main() {
@@ -132,6 +132,10 @@ func gatewaySteamXmppAction() {
 				xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr)
 				delete(SetSteamId, sid)
 			}
+
+		case steam.ActionFatalError:
+			time.Sleep(2 * time.Second)
+			go steam.Run()
 		}
 	}
 }
