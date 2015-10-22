@@ -43,8 +43,6 @@ var (
 	ChanAction   = make(chan string)
 
 	CurrentStatus = Status_offline
-
-	Version = ""
 )
 
 func Run() {
@@ -53,8 +51,6 @@ func Run() {
 	jid = must(xmpp.ParseJID(JidStr)).(xmpp.JID)
 	stream = must(xmpp.NewStream(Addr, &xmpp.StreamConfig{LogStanzas: true})).(*xmpp.Stream)
 	comp = must(xmpp.NewComponentXMPP(stream, jid, Secret)).(*xmpp.XMPP)
-
-	// SendPresence(Status_online, Type_available)
 
 	mainXMPP()
 }
@@ -88,7 +84,7 @@ func mainXMPP() {
 	}
 
 	// Send deconnexion
-	SendPresence(Status_offline, Type_unavailable)
+	SendPresence(Status_offline, Type_unavailable, "")
 }
 
 func must(v interface{}, err error) interface{} {
@@ -99,11 +95,11 @@ func must(v interface{}, err error) interface{} {
 }
 
 func Disconnect() {
-	SendPresence(Status_offline, Type_unavailable)
+	SendPresence(Status_offline, Type_unavailable, "")
 }
 
-func SendPresence(status, tpye string) {
-	comp.Out <- xmpp.Presence{To: PreferedJID, From: jid.Domain, Show: status, Type: tpye, Status: "go-xmpp4steam v" + Version}
+func SendPresence(status, tpye, message string) {
+	comp.Out <- xmpp.Presence{To: PreferedJID, From: jid.Domain, Show: status, Type: tpye, Status: message}
 }
 
 func SendPresenceFrom(status, tpye, from, message string) {

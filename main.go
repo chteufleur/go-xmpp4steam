@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	Version = "go-xmpp4steam v0.1.2"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
@@ -24,8 +25,6 @@ var (
 )
 
 func init() {
-	xmpp.Version = "0.1.1"
-
 	err := cfg.Load(configurationFilePath, mapConfig)
 	if err != nil {
 		log.Fatal("Failed to load configuration file.", err)
@@ -124,16 +123,14 @@ func gatewaySteamXmppAction() {
 		action := <-steam.ChanAction
 		switch action {
 		case steam.ActionConnected:
-			xmpp.SendPresence(xmpp.CurrentStatus, xmpp.Type_available)
+			xmpp.SendPresence(xmpp.CurrentStatus, xmpp.Type_available, Version)
 
 		case steam.ActionDisconnected:
 			xmpp.Disconnect()
-			for sid, _ := range SetSteamId {
-				xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr, "")
-				delete(SetSteamId, sid)
-			}
+			disconnectAllSteamUser()
 
 		case steam.ActionFatalError:
+			disconnectAllSteamUser()
 			time.Sleep(2 * time.Second)
 			go steam.Run()
 		}
@@ -185,6 +182,13 @@ func gatewaySteamXmppPresence() {
 	}
 }
 
+
+func disconnectAllSteamUser() {
+	for sid, _ := range SetSteamId {
+		xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr, "")
+		delete(SetSteamId, sid)
+	}
+}
 // /Steam -> XMPP gateways
 
 func inputStop() {
