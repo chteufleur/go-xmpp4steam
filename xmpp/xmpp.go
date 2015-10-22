@@ -106,8 +106,12 @@ func SendPresence(status, tpye string) {
 	comp.Out <- xmpp.Presence{To: PreferedJID, From: jid.Domain, Show: status, Type: tpye, Status: "go-xmpp4steam v" + Version}
 }
 
-func SendPresenceFrom(status, tpye, from string) {
-	comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye}
+func SendPresenceFrom(status, tpye, from, message string) {
+	if message == "" {
+		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye}
+	} else {
+		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message}
+	}
 }
 
 func SendMessage(from, message string) {

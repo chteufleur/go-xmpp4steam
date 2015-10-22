@@ -90,6 +90,7 @@ func mainSteam() {
 			// ChanPresence <- e.Name
 			ChanPresence <- e.FriendId.ToString()
 			ChanPresenceSteam <- e.State
+			ChanPresence <- e.GameName
 
 		case *steam.ChatMsgEvent:
 			ChanMessage <- e.ChatterId.ToString()

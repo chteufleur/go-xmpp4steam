@@ -129,7 +129,7 @@ func gatewaySteamXmppAction() {
 		case steam.ActionDisconnected:
 			xmpp.Disconnect()
 			for sid, _ := range SetSteamId {
-				xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr)
+				xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr, "")
 				delete(SetSteamId, sid)
 			}
 
@@ -153,6 +153,7 @@ func gatewaySteamXmppPresence() {
 		// name := steam.ChanPresence
 		steamId := <-steam.ChanPresence
 		stat := <-steam.ChanPresenceSteam
+		gameName := <-steam.ChanPresence
 
 		SetSteamId[steamId] = struct{}{}
 
@@ -180,7 +181,7 @@ func gatewaySteamXmppPresence() {
 			tpye = xmpp.Type_available
 		}
 
-		xmpp.SendPresenceFrom(status, tpye, steamId+"@"+xmpp.JidStr)
+		xmpp.SendPresenceFrom(status, tpye, steamId+"@"+xmpp.JidStr, gameName)
 	}
 }
 
