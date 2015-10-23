@@ -152,8 +152,6 @@ func gatewaySteamXmppPresence() {
 		stat := <-steam.ChanPresenceSteam
 		gameName := <-steam.ChanPresence
 
-		SetSteamId[steamId] = struct{}{}
-
 		var status string
 		var tpye string
 		switch stat {
@@ -178,6 +176,10 @@ func gatewaySteamXmppPresence() {
 			tpye = xmpp.Type_available
 		}
 
+		if _, ok := SetSteamId[steamId]; !ok {
+			xmpp.SendPresenceFrom(status, xmpp.Type_subscribe, steamId+"@"+xmpp.JidStr, gameName)
+			SetSteamId[steamId] = struct{}{}
+		}
 		xmpp.SendPresenceFrom(status, tpye, steamId+"@"+xmpp.JidStr, gameName)
 	}
 }

@@ -18,6 +18,7 @@ const (
 
 	Type_available   = ""
 	Type_unavailable = "unavailable"
+	Type_subscribe   = "subscribe"
 
 	ActionConnexion   = "action_xmpp_connexion"
 	ActionDeconnexion = "action_xmpp_deconnexion"
