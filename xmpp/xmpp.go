@@ -16,9 +16,14 @@ const (
 	Status_do_not_disturb = "dnd"
 	Status_extended_away  = "xa"
 
-	Type_available   = ""
-	Type_unavailable = "unavailable"
-	Type_subscribe   = "subscribe"
+	Type_available    = ""
+	Type_unavailable  = "unavailable"
+	Type_subscribe    = "subscribe"
+	Type_subscribed   = "subscribed"
+	Type_unsubscribe  = "unsubscribe"
+	Type_unsubscribed = "unsubscribed"
+	Type_probe        = "probe"
+	Type_error        = "error"
 
 	ActionConnexion   = "action_xmpp_connexion"
 	ActionDeconnexion = "action_xmpp_deconnexion"
@@ -60,7 +65,7 @@ func mainXMPP() {
 	for x := range comp.In {
 		switch v := x.(type) {
 		case *xmpp.Presence:
-			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.To == JidStr && v.Type != "probe" {
+			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.To == JidStr && v.Type != Type_probe {
 				if v.Type == Type_unavailable {
 					log.Printf("%sPresence reçut unavailable", LogDebug)
 					Disconnect()
