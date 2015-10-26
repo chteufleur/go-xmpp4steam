@@ -49,13 +49,15 @@ var (
 	ChanAction   = make(chan string)
 
 	CurrentStatus = Status_offline
+
+	Debug = true
 )
 
 func Run() {
 	log.Printf("%sRunning", LogInfo)
 	// Create stream and configure it as a component connection.
 	jid = must(xmpp.ParseJID(JidStr)).(xmpp.JID)
-	stream = must(xmpp.NewStream(Addr, &xmpp.StreamConfig{LogStanzas: true})).(*xmpp.Stream)
+	stream = must(xmpp.NewStream(Addr, &xmpp.StreamConfig{LogStanzas: Debug})).(*xmpp.Stream)
 	comp = must(xmpp.NewComponentXMPP(stream, jid, Secret)).(*xmpp.XMPP)
 
 	mainXMPP()
@@ -108,11 +110,15 @@ func SendPresence(status, tpye, message string) {
 	comp.Out <- xmpp.Presence{To: PreferedJID, From: jid.Domain, Show: status, Type: tpye, Status: message}
 }
 
-func SendPresenceFrom(status, tpye, from, message string) {
+func SendPresenceFrom(status, tpye, from, message, nick string) {
 	if message == "" {
+		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Nick: nick}
+	} else if nick == "" {
+		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message}
+	} else if nick == "" {
 		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye}
 	} else {
-		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message}
+		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message, Nick: nick}
 	}
 }
 

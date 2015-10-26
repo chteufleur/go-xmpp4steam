@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Version = "go-xmpp4steam v0.1.2"
+	Version = "go-xmpp4steam v0.1.3"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
@@ -35,6 +35,7 @@ func init() {
 	xmpp.JidStr = mapConfig["xmpp_hostname"]
 	xmpp.Secret = mapConfig["xmpp_secret"]
 	xmpp.PreferedJID = mapConfig["xmpp_authorized_jid"]
+	xmpp.Debug = mapConfig["xmpp_debug"] == "true"
 
 	// Steam config
 	steam.Username = mapConfig["steam_login"]
@@ -64,18 +65,25 @@ func main() {
 
 // XMPP -> Steam gateways
 func gatewayXmppSteamAction() {
+	connecting := false
 	for {
 		action := <-xmpp.ChanAction
 
 		switch action {
 		case xmpp.ActionConnexion:
 			if !steam.IsConnected() {
-				steam.Connect()
+				if !connecting {
+					steam.Connect()
+					connecting = true
+				}
+			} else {
+				connecting = false
 			}
 
 		case xmpp.ActionDeconnexion:
 			if steam.IsConnected() {
 				steam.Disconnect()
+				connecting = false
 			}
 		}
 	}
@@ -147,8 +155,8 @@ func gatewaySteamXmppMessage() {
 
 func gatewaySteamXmppPresence() {
 	for {
-		// name := steam.ChanPresence
 		steamId := <-steam.ChanPresence
+		name := <- steam.ChanPresence
 		stat := <-steam.ChanPresenceSteam
 		gameName := <-steam.ChanPresence
 
@@ -177,17 +185,17 @@ func gatewaySteamXmppPresence() {
 		}
 
 		if _, ok := SetSteamId[steamId]; !ok {
-			xmpp.SendPresenceFrom(status, xmpp.Type_subscribe, steamId+"@"+xmpp.JidStr, gameName)
+			xmpp.SendPresenceFrom(status, xmpp.Type_subscribe, steamId+"@"+xmpp.JidStr, gameName, name)
 			SetSteamId[steamId] = struct{}{}
 		}
-		xmpp.SendPresenceFrom(status, tpye, steamId+"@"+xmpp.JidStr, gameName)
+		xmpp.SendPresenceFrom(status, tpye, steamId+"@"+xmpp.JidStr, gameName, name)
 	}
 }
 
 
 func disconnectAllSteamUser() {
 	for sid, _ := range SetSteamId {
-		xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr, "")
+		xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr, "", "")
 		delete(SetSteamId, sid)
 	}
 }

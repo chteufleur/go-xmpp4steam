@@ -87,8 +87,8 @@ func mainSteam() {
 			ioutil.WriteFile(serverAddrs, b, 0666)
 
 		case *steam.PersonaStateEvent:
-			// ChanPresence <- e.Name
 			ChanPresence <- e.FriendId.ToString()
+			ChanPresence <- e.Name
 			ChanPresenceSteam <- e.State
 			ChanPresence <- e.GameName
 
