@@ -65,25 +65,18 @@ func main() {
 
 // XMPP -> Steam gateways
 func gatewayXmppSteamAction() {
-	connecting := false
 	for {
 		action := <-xmpp.ChanAction
 
 		switch action {
 		case xmpp.ActionConnexion:
 			if !steam.IsConnected() {
-				if !connecting {
-					steam.Connect()
-					connecting = true
-				}
-			} else {
-				connecting = false
+				steam.Connect()
 			}
 
 		case xmpp.ActionDeconnexion:
 			if steam.IsConnected() {
 				steam.Disconnect()
-				connecting = false
 			}
 		}
 	}
