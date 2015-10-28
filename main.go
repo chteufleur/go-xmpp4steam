@@ -1,8 +1,8 @@
 package main
 
 import (
-	"go-xmpp4steam/steam"
-	"go-xmpp4steam/xmpp"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/steam"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/xmpp"
 
 	"github.com/Philipp15b/go-steam/internal/steamlang"
 	"github.com/jimlawless/cfg"

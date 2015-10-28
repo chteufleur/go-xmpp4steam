@@ -1,8 +1,7 @@
 package xmpp
 
 import (
-	// "github.com/emgee/go-xmpp"
-	"go-xmpp"
+	"git.kingpenguin.tk/chteufleur/go-xmpp.git"
 
 	"log"
 	"strings"
