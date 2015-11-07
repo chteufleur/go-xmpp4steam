@@ -12,24 +12,16 @@ go-xmpp4steam is a XMPP/Steam gateway.
  * [cfg](https://github.com/jimlawless/cfg) for the configuration file.
 
 
-Go into your $GOPATH directory and execut those two line to get the 2 dependencies (cfg and go-steam).
-```sh
-go get github.com/Philipp15b/go-steam
-go get github.com/jimlawless/cfg
+Download the CA at [https://kingpenguin.tk/ressources/cacert.pem](https://kingpenguin.tk/ressources/cacert.pem), then edit your .gitconfig and add the following lines
 ```
-After that, go into ``src`` directory and get the go-xmpp sources dependence.
-```sh
-git clone https://git.kingpenguin.tk/chteufleur/go-xmpp
+[https "https://git.kingpenguin.tk"]
+  sslCAPath = /path/to/CA
 ```
 
-### Download sources
-Then download and compile the go-xmpp4steam gateway.
+Then go into your $GOPATH directory and go get the code.
 ```sh
-git clone https://git.kingpenguin.tk/chteufleur/go-xmpp4steam.git
-cd go-xmpp4steam
-go build main.go
+go get git.kingpenguin.tk/chteufleur/go-xmpp4steam.git
 ```
-A binary file will be generated.
 
 ### Configure
 Configure the gateway by editing the ``xmpp4steam.cfg`` file.
