@@ -25,9 +25,10 @@ const (
 	State_LookingToPlay  = steamlang.EPersonaState_LookingToPlay
 	State_Max            = steamlang.EPersonaState_Max
 
-	ActionConnected    = "steam_connected"
-	ActionDisconnected = "steam_disconnected"
-	ActionFatalError   = "steam_fatal_error"
+	ActionConnected       = "steam_connected"
+	ActionDisconnected    = "steam_disconnected"
+	ActionFatalError      = "steam_fatal_error"
+	ActionMainMethodEnded = "action_steam_main_method_ended"
 
 	LogInfo  = "\t[STEAM INFO]\t"
 	LogError = "\t[STEAM ERROR]\t"
@@ -55,6 +56,7 @@ func Run() {
 	client.ConnectionTimeout = 10 * time.Second
 
 	mainSteam()
+	ChanAction <- ActionMainMethodEnded
 }
 
 func mainSteam() {

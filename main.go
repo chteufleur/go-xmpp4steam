@@ -7,15 +7,15 @@ import (
 	"github.com/Philipp15b/go-steam/internal/steamlang"
 	"github.com/jimlawless/cfg"
 
-	"bufio"
 	"log"
 	"os"
-	"strings"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
 const (
-	Version = "go-xmpp4steam v0.1.3"
+	Version               = "go-xmpp4steam v0.1.4.0"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
@@ -54,13 +54,19 @@ func main() {
 	go gatewaySteamXmppPresence()
 
 	go steam.Run()
-	xmpp.Run()
+	go xmpp.Run()
 
-	// inputStop()
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, os.Interrupt)
+	signal.Notify(sigchan, syscall.SIGTERM)
+	signal.Notify(sigchan, os.Kill)
+	<-sigchan
 
 	steam.Disconnect()
 	xmpp.Disconnect()
+
 	time.Sleep(1 * time.Second)
+	log.Println("Exit main()")
 }
 
 // XMPP -> Steam gateways
@@ -78,6 +84,9 @@ func gatewayXmppSteamAction() {
 			if steam.IsConnected() {
 				steam.Disconnect()
 			}
+
+		case xmpp.ActionMainMethodEnded:
+			go xmpp.Run()
 		}
 	}
 }
@@ -134,6 +143,9 @@ func gatewaySteamXmppAction() {
 			disconnectAllSteamUser()
 			time.Sleep(2 * time.Second)
 			go steam.Run()
+
+		case steam.ActionMainMethodEnded:
+			go steam.Run()
 		}
 	}
 }
@@ -149,7 +161,7 @@ func gatewaySteamXmppMessage() {
 func gatewaySteamXmppPresence() {
 	for {
 		steamId := <-steam.ChanPresence
-		name := <- steam.ChanPresence
+		name := <-steam.ChanPresence
 		stat := <-steam.ChanPresenceSteam
 		gameName := <-steam.ChanPresence
 
@@ -185,26 +197,11 @@ func gatewaySteamXmppPresence() {
 	}
 }
 
-
 func disconnectAllSteamUser() {
 	for sid, _ := range SetSteamId {
 		xmpp.SendPresenceFrom(xmpp.Status_offline, xmpp.Type_unavailable, sid+"@"+xmpp.JidStr, "", "")
 		delete(SetSteamId, sid)
 	}
 }
+
 // /Steam -> XMPP gateways
-
-func inputStop() {
-	for {
-		in := bufio.NewReader(os.Stdin)
-		line, err := in.ReadString('\n')
-		if err != nil {
-			continue
-		}
-		line = strings.TrimRight(line, "\n")
-
-		if line == "stop" {
-			return
-		}
-	}
-}

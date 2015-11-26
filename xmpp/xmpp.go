@@ -24,8 +24,9 @@ const (
 	Type_probe        = "probe"
 	Type_error        = "error"
 
-	ActionConnexion   = "action_xmpp_connexion"
-	ActionDeconnexion = "action_xmpp_deconnexion"
+	ActionConnexion       = "action_xmpp_connexion"
+	ActionDeconnexion     = "action_xmpp_deconnexion"
+	ActionMainMethodEnded = "action_xmpp_main_method_ended"
 
 	LogInfo  = "\t[XMPP INFO]\t"
 	LogError = "\t[XMPP ERROR]\t"
@@ -60,6 +61,7 @@ func Run() {
 	comp = must(xmpp.NewComponentXMPP(stream, jid, Secret)).(*xmpp.XMPP)
 
 	mainXMPP()
+	ChanAction <- ActionMainMethodEnded
 }
 
 func mainXMPP() {
@@ -102,6 +104,7 @@ func must(v interface{}, err error) interface{} {
 }
 
 func Disconnect() {
+	log.Printf("%sXMPP disconnect", LogInfo)
 	SendPresence(Status_offline, Type_unavailable, "")
 }
 
