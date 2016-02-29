@@ -50,6 +50,8 @@ var (
 
 	CurrentStatus = Status_offline
 
+	setJIDconnected = make(map[string]bool)
+
 	Debug = true
 )
 
@@ -70,10 +72,15 @@ func mainXMPP() {
 		case *xmpp.Presence:
 			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.To == JidStr && v.Type != Type_probe {
 				if v.Type == Type_unavailable {
+					delete(setJIDconnected, v.From)
 					log.Printf("%sPresence reçut unavailable", LogDebug)
-					Disconnect()
-					ChanAction <- ActionDeconnexion
+					if len(setJIDconnected) <= 0 {
+						// Disconnect only when all JID are disconnected
+						Disconnect()
+						ChanAction <- ActionDeconnexion
+					}
 				} else {
+					setJIDconnected[v.From] = true
 					log.Printf("%sPresence reçut", LogDebug)
 					CurrentStatus = v.Show
 					ChanAction <- ActionConnexion
