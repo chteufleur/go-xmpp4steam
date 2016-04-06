@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Version               = "go-xmpp4steam v0.1.4.1"
+	Version               = "go-xmpp4steam v0.1.5"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
@@ -40,7 +40,7 @@ func init() {
 	// Steam config
 	steam.Username = mapConfig["steam_login"]
 	steam.Password = mapConfig["steam_password"]
-	steam.AuthCode = mapConfig["steam_auth_code"]
+	steam.AuthCode = ""
 }
 
 func main() {
@@ -49,6 +49,7 @@ func main() {
 
 	go gatewayXmppSteamPresence()
 	go gatewayXmppSteamMessage()
+	go gatewayXmppSteamAuthCode()
 
 	go gatewaySteamXmppMessage()
 	go gatewaySteamXmppPresence()
@@ -122,6 +123,16 @@ func gatewayXmppSteamMessage() {
 		message := <-xmpp.ChanMessage
 
 		steam.SendMessage(steamId, message)
+	}
+}
+
+func gatewayXmppSteamAuthCode() {
+	for {
+		authCode := <- xmpp.ChanAuthCode
+		steam.AuthCode = authCode
+		steam.Disconnect()
+		time.Sleep(2 * time.Second)
+		go steam.Run()
 	}
 }
 

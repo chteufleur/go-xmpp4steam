@@ -94,6 +94,15 @@ func mainXMPP() {
 			ChanMessage <- steamID
 			ChanMessage <- v.Body
 
+		case *xmpp.Iq:
+			switch v.PayloadName().Space {
+			case xmpp.NsDiscoItems:
+				execDiscoCommand(v)
+
+			case xmpp.NodeAdHocCommand:
+				execCommandAdHoc(v)
+			}
+
 		default:
 			log.Printf("%srecv: %v", LogDebug, x)
 		}

@@ -116,7 +116,7 @@ func setLoginInfos() {
 		log.Printf("%sAuthentification by SentryFileHash", LogDebug)
 	} else if AuthCode != "" {
 		myLoginInfo.AuthCode = AuthCode
-		log.Printf("%sAuthentification by AuthCode", LogDebug)
+		log.Printf("%sAuthentification by AuthCode (%s)", LogDebug, AuthCode)
 	} else {
 		log.Printf("%sFirst authentification", LogDebug)
 	}
