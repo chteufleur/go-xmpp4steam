@@ -132,17 +132,17 @@ func SendPresence(status, tpye, message string) {
 }
 
 func SendPresenceFrom(status, tpye, from, message, nick string) {
-/*
-	if message == "" {
-		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Nick: nick}
-	} else if nick == "" {
-		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message}
-	} else if nick == "" {
-		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye}
-	} else {
-		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message, Nick: nick}
-	}
-*/
+	/*
+		if message == "" {
+			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Nick: nick}
+		} else if nick == "" {
+			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message}
+		} else if nick == "" {
+			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye}
+		} else {
+			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message, Nick: nick}
+		}
+	*/
 	p := xmpp.Presence{To: PreferedJID, From: from}
 
 	if status != "" {

@@ -131,7 +131,7 @@ func gatewayXmppSteamMessage() {
 
 func gatewayXmppSteamAuthCode() {
 	for {
-		authCode := <- xmpp.ChanAuthCode
+		authCode := <-xmpp.ChanAuthCode
 		steam.AuthCode = authCode
 		steam.Disconnect()
 		time.Sleep(2 * time.Second)
