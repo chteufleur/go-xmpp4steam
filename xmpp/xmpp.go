@@ -80,10 +80,10 @@ func mainXMPP() {
 						ChanAction <- ActionDeconnexion
 					}
 				} else if v.Type == Type_subscribe {
-					SendPresenceFrom("", Type_subscribed, v.To, "", "")
-				} else {
+					SendPresenceFrom("", Type_subscribed, JidStr, "", "")
+				} else if v.Type != Type_subscribed { // Type subscribed is send by JID without ressourse
+					log.Printf("%sAdd connected user. JID : %s", LogInfo, v.From)
 					setJIDconnected[v.From] = true
-					log.Printf("%sPresence reçut", LogDebug)
 					CurrentStatus = v.Show
 					ChanAction <- ActionConnexion
 				}
