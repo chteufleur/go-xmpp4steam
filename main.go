@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Version               = "go-xmpp4steam v0.1.5"
+	Version               = "go-xmpp4steam v0.1.6"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
@@ -95,6 +95,8 @@ func gatewayXmppSteamAction() {
 func gatewayXmppSteamPresence() {
 	for {
 		status := <-xmpp.ChanPresence
+		tpye := <-xmpp.ChanPresence
+
 		var steamStatus steamlang.EPersonaState
 
 		switch status {
@@ -114,6 +116,7 @@ func gatewayXmppSteamPresence() {
 		}
 
 		steam.SendPresence(steamStatus)
+		xmpp.SendPresence(status, tpye, Version)
 	}
 }
 

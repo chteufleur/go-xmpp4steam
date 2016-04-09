@@ -70,8 +70,8 @@ func mainXMPP() {
 	for x := range comp.In {
 		switch v := x.(type) {
 		case *xmpp.Presence:
-			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.To == JidStr && v.Type != Type_probe {
-				if v.Type == Type_unavailable {
+			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.Type != Type_probe {
+				if v.Type == Type_unavailable && v.To == JidStr {
 					delete(setJIDconnected, v.From)
 					log.Printf("%sPresence reçut unavailable", LogDebug)
 					if len(setJIDconnected) <= 0 {
@@ -79,6 +79,8 @@ func mainXMPP() {
 						Disconnect()
 						ChanAction <- ActionDeconnexion
 					}
+				} else if v.Type == Type_subscribe {
+					SendPresenceFrom("", Type_subscribed, v.To, "", "")
 				} else {
 					setJIDconnected[v.From] = true
 					log.Printf("%sPresence reçut", LogDebug)
@@ -87,6 +89,7 @@ func mainXMPP() {
 				}
 
 				ChanPresence <- v.Show
+				ChanPresence <- v.Type
 			}
 
 		case *xmpp.Message:
@@ -129,6 +132,7 @@ func SendPresence(status, tpye, message string) {
 }
 
 func SendPresenceFrom(status, tpye, from, message, nick string) {
+/*
 	if message == "" {
 		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Nick: nick}
 	} else if nick == "" {
@@ -138,6 +142,23 @@ func SendPresenceFrom(status, tpye, from, message, nick string) {
 	} else {
 		comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message, Nick: nick}
 	}
+*/
+	p := xmpp.Presence{To: PreferedJID, From: from}
+
+	if status != "" {
+		p.Show = status
+	}
+	if tpye != "" {
+		p.Type = tpye
+	}
+	if message != "" {
+		p.Status = message
+	}
+	if nick != "" {
+		p.Nick = nick
+	}
+
+	comp.Out <- p
 }
 
 func SendMessage(from, message string) {
