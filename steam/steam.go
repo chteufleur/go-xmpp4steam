@@ -85,8 +85,9 @@ func mainSteam() {
 			b, err := json.Marshal(*e)
 			if err != nil {
 				log.Printf("%sFailed to json.Marshal() servers list", LogError)
+			} else {
+				ioutil.WriteFile(serverAddrs, b, 0666)
 			}
-			ioutil.WriteFile(serverAddrs, b, 0666)
 
 		case *steam.PersonaStateEvent:
 			ChanPresence <- e.FriendId.ToString()
