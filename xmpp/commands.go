@@ -124,8 +124,17 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 				dbUser.SteamPwd = steamPwd
 
 				// TODO update
-				if dbUser.AddLine() {
-					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd)
+				isUserRegistred := database.GetLine(dbUser.Jid) != nil
+				var isSqlSuccess bool
+				if isUserRegistred {
+					isSqlSuccess = dbUser.UpdateLine()
+				} else {
+					isSqlSuccess = dbUser.AddLine()
+				}
+				if isSqlSuccess {
+					if !isUserRegistred {
+						AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd)
+					}
 					note.Value = "Command succeded !"
 				} else {
 					note.Value = "Error append while executing command"

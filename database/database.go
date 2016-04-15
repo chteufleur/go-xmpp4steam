@@ -13,6 +13,7 @@ const (
 	insertDatabaseStmt = "insert into users (jid, steamLogin, steamPwd) values(?, ?, ?)"
 	deleteDatabaseStmt = "delete from users where jid = ?"
 	selectDatabaseStmt = "select jid, steamLogin, steamPwd from users where jid = ?"
+	updateDatabaseStmt = "update users set steamLogin=?, steamPwd=? where jid=?"
 
 	LogInfo  = "\t[SQLITE INFO]\t"
 	LogError = "\t[SQLITE ERROR]\t"
@@ -63,6 +64,23 @@ func (newLine *DatabaseLine) AddLine() bool {
 	return true
 }
 
+func (newLine *DatabaseLine) UpdateLine() bool {
+	log.Printf("%sUpdate line %s", LogInfo, newLine.Jid)
+	stmt, err := db.Prepare(updateDatabaseStmt)
+	if err != nil {
+		log.Printf("%sError on update ", LogError, err)
+		return false
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(newLine.SteamLogin, newLine.SteamPwd, newLine.Jid)
+	if err != nil {
+		log.Printf("%sError on updating SQL statement", LogError, err)
+		return false
+	}
+
+	return true
+}
+
 func RemoveLine(jid string) bool {
 	// FIXME not working
 	log.Printf("%sRemove line %s", LogInfo, jid)
@@ -105,6 +123,7 @@ func GetLine(jid string) *DatabaseLine {
 	err = stmt.QueryRow(jid).Scan(&ret.Jid, &ret.SteamLogin, &ret.SteamPwd)
 	if err != nil {
 		log.Printf("%sError on select scan", LogError, err)
+		return nil
 	}
 
 	return ret
