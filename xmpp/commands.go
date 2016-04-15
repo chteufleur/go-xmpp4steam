@@ -123,7 +123,6 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 				dbUser.SteamLogin = steamLogin
 				dbUser.SteamPwd = steamPwd
 
-				// TODO update
 				isUserRegistred := database.GetLine(dbUser.Jid) != nil
 				var isSqlSuccess bool
 				if isUserRegistred {

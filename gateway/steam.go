@@ -117,7 +117,6 @@ func (g *GatewayInfo) mainSteam() {
 
 		default:
 			log.Printf("%s", LogSteamDebug, e)
-			// TODO send message
 		}
 	}
 }
