@@ -2,12 +2,15 @@ package xmpp
 
 import (
 	"git.kingpenguin.tk/chteufleur/go-xmpp.git"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/database"
 
 	"log"
+	"strings"
 )
 
 const (
-	CommandAuthcode = "steamAuthCodeCommand"
+	CommandAuthcode        = "steamAuthCodeCommand"
+	CommandGetIdentifiants = "steamGetIdentifiants"
 )
 
 var (
@@ -20,7 +23,9 @@ func execDiscoCommand(iq *xmpp.Iq) {
 	discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
 
 	// Add available commands
-	discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Auth Code"}
+	discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
+	discoItem.Item = append(discoItem.Item, *discoI)
+	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
 	discoItem.Item = append(discoItem.Item, *discoI)
 
 	reply.PayloadEncode(discoItem)
@@ -45,6 +50,16 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			cmdXForm.Fields = append(cmdXForm.Fields, *field)
 			cmd.XForm = *cmdXForm
 
+		} else if adHoc.Node == CommandGetIdentifiants {
+			// Command Auth Code
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocForm, Title: "Steam Account Info", Instructions: "Please provide your Steam login and password."}
+
+			field := &xmpp.AdHocField{Var: "login", Label: "Steam Login", Type: xmpp.TypeAdHocFieldTextSingle}
+			cmdXForm.Fields = append(cmdXForm.Fields, *field)
+			field = &xmpp.AdHocField{Var: "password", Label: "Steam Password", Type: xmpp.TypeAdHocFieldTextSingle}
+			cmdXForm.Fields = append(cmdXForm.Fields, *field)
+
+			cmd.XForm = *cmdXForm
 		}
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
@@ -55,7 +70,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCompleted, SessionId: adHoc.SessionId}
 
 		if adHoc.Node == CommandAuthcode && adHoc.XForm.Type == xmpp.TypeAdHocSubmit {
-			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Steam Auth Code "}
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Steam Auth Code"}
 			cmd.XForm = *cmdXForm
 			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
 
@@ -70,11 +85,54 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			}
 			if authCode != "" {
 				// Succeded
-				ChanAuthCode <- authCode
-				note.Value = "Commande effectuée avec succes !"
+				jidBare := strings.SplitN(iq.From, "/", 2)[0]
+				g := MapGatewayInfo[jidBare]
+				if g != nil {
+					g.SetSteamAuthCode(authCode)
+					note.Value = "Command succeded !"
+				} else {
+					note.Value = "Your are not registred. Please, register before sending Steam auth code."
+				}
 			} else {
 				// Failed
-				note.Value = "Une erreur c'est produite à l'exécution de la commande…"
+				note.Value = "Error append while executing command"
+			}
+			cmd.Note = *note
+
+		} else if adHoc.Node == CommandGetIdentifiants {
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Steam Account Info"}
+			cmd.XForm = *cmdXForm
+			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
+
+			// Command Auth Code
+			steamLogin := ""
+			steamPwd := ""
+			fields := adHoc.XForm.Fields
+			for _, field := range fields {
+				if field.Var == "login" {
+					steamLogin = field.Value
+				} else if field.Var == "password" {
+					steamPwd = field.Value
+				}
+			}
+			if steamLogin != "" && steamPwd != "" {
+				// Succeded
+				jidBare := strings.SplitN(iq.From, "/", 2)[0]
+				dbUser := new(database.DatabaseLine)
+				dbUser.Jid = jidBare
+				dbUser.SteamLogin = steamLogin
+				dbUser.SteamPwd = steamPwd
+
+				// TODO update
+				if dbUser.AddLine() {
+					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd)
+					note.Value = "Command succeded !"
+				} else {
+					note.Value = "Error append while executing command"
+				}
+			} else {
+				// Failed
+				note.Value = "Failed because Steam login or Steam password is empty."
 			}
 			cmd.Note = *note
 		}

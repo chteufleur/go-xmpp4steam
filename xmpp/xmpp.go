@@ -2,35 +2,20 @@ package xmpp
 
 import (
 	"git.kingpenguin.tk/chteufleur/go-xmpp.git"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/gateway"
 
 	"log"
 	"strings"
 )
 
 const (
-	Status_online         = ""
-	Status_offline        = ""
-	Status_away           = "away"
-	Status_chat           = "chat"
-	Status_do_not_disturb = "dnd"
-	Status_extended_away  = "xa"
-
-	Type_available    = ""
-	Type_unavailable  = "unavailable"
-	Type_subscribe    = "subscribe"
-	Type_subscribed   = "subscribed"
-	Type_unsubscribe  = "unsubscribe"
-	Type_unsubscribed = "unsubscribed"
-	Type_probe        = "probe"
-	Type_error        = "error"
-
 	ActionConnexion       = "action_xmpp_connexion"
 	ActionDeconnexion     = "action_xmpp_deconnexion"
 	ActionMainMethodEnded = "action_xmpp_main_method_ended"
 
-	LogInfo  = "\t[XMPP INFO]\t"
-	LogError = "\t[XMPP ERROR]\t"
-	LogDebug = "\t[XMPP DEBUG]\t"
+	LogInfo  = "\t[XMPP COMPONENT INFO]\t"
+	LogError = "\t[XMPP COMPONENT ERROR]\t"
+	LogDebug = "\t[XMPP COMPONENT DEBUG]\t"
 )
 
 var (
@@ -38,21 +23,15 @@ var (
 	JidStr = ""
 	Secret = ""
 
-	PreferedJID = ""
-
 	jid    xmpp.JID
 	stream = new(xmpp.Stream)
 	comp   = new(xmpp.XMPP)
 
-	ChanPresence = make(chan string)
-	ChanMessage  = make(chan string)
-	ChanAction   = make(chan string)
-
-	CurrentStatus = Status_offline
-
-	setJIDconnected = make(map[string]bool)
+	ChanAction = make(chan string)
 
 	Debug = true
+
+	MapGatewayInfo = make(map[string]*gateway.GatewayInfo)
 )
 
 func Run() {
@@ -67,35 +46,34 @@ func Run() {
 }
 
 func mainXMPP() {
+	// Define xmpp out for all users
+	for _, u := range MapGatewayInfo {
+		u.XMPP_Out = comp.Out
+	}
+
 	for x := range comp.In {
 		switch v := x.(type) {
 		case *xmpp.Presence:
-			if strings.SplitN(v.From, "/", 2)[0] == PreferedJID && v.Type != Type_probe {
-				if v.Type == Type_unavailable && v.To == JidStr {
-					delete(setJIDconnected, v.From)
-					log.Printf("%sPresence reçut unavailable", LogDebug)
-					if len(setJIDconnected) <= 0 {
-						// Disconnect only when all JID are disconnected
-						Disconnect()
-						ChanAction <- ActionDeconnexion
-					}
-				} else if v.Type == Type_subscribe {
-					SendPresenceFrom("", Type_subscribed, JidStr, "", "")
-				} else if v.Type != Type_subscribed { // Type subscribed is send by JID without ressourse
-					log.Printf("%sAdd connected user. JID : %s", LogInfo, v.From)
-					setJIDconnected[v.From] = true
-					CurrentStatus = v.Show
-					ChanAction <- ActionConnexion
+			jidBare := strings.SplitN(v.From, "/", 2)[0]
+			g := MapGatewayInfo[jidBare]
+			if g != nil {
+				log.Printf("%sPresence transfered to %s", LogDebug, jidBare)
+				g.ReceivedXMPP_Presence(v)
+			} else {
+				if v.Type != gateway.Type_error && v.Type != gateway.Type_probe {
+					SendPresence(gateway.Status_offline, gateway.Type_unavailable, jid.Domain, v.From, "Your are not registred", "")
 				}
-
-				ChanPresence <- v.Show
-				ChanPresence <- v.Type
 			}
 
 		case *xmpp.Message:
-			steamID := strings.SplitN(v.To, "@", 2)[0]
-			ChanMessage <- steamID
-			ChanMessage <- v.Body
+			jidBare := strings.SplitN(v.From, "/", 2)[0]
+			g := MapGatewayInfo[jidBare]
+			if g != nil {
+				log.Printf("%sMessage transfered to %s", LogDebug, jidBare)
+				g.ReceivedXMPP_Message(v)
+			} else {
+				SendMessage(v.From, "", "Your are not registred. If you want to register, please, send an Ad-Hoc command.")
+			}
 
 		case *xmpp.Iq:
 			switch v.PayloadName().Space {
@@ -112,7 +90,7 @@ func mainXMPP() {
 	}
 
 	// Send deconnexion
-	SendPresence(Status_offline, Type_unavailable, "")
+	SendPresence(gateway.Status_offline, gateway.Type_unavailable, "", "", "", "")
 }
 
 func must(v interface{}, err error) interface{} {
@@ -124,26 +102,11 @@ func must(v interface{}, err error) interface{} {
 
 func Disconnect() {
 	log.Printf("%sXMPP disconnect", LogInfo)
-	SendPresence(Status_offline, Type_unavailable, "")
+	SendPresence(gateway.Status_offline, gateway.Type_unavailable, "", "", "", "")
 }
 
-func SendPresence(status, tpye, message string) {
-	comp.Out <- xmpp.Presence{To: PreferedJID, From: jid.Domain, Show: status, Type: tpye, Status: message}
-}
-
-func SendPresenceFrom(status, tpye, from, message, nick string) {
-	/*
-		if message == "" {
-			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Nick: nick}
-		} else if nick == "" {
-			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message}
-		} else if nick == "" {
-			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye}
-		} else {
-			comp.Out <- xmpp.Presence{To: PreferedJID, From: from, Show: status, Type: tpye, Status: message, Nick: nick}
-		}
-	*/
-	p := xmpp.Presence{To: PreferedJID, From: from}
+func SendPresence(status, tpye, from, to, message, nick string) {
+	p := xmpp.Presence{}
 
 	if status != "" {
 		p.Show = status
@@ -157,10 +120,40 @@ func SendPresenceFrom(status, tpye, from, message, nick string) {
 	if nick != "" {
 		p.Nick = nick
 	}
+	if from == "" {
+		p.From = jid.Domain
+	} else {
+		p.From = from
+	}
+	if to != "" {
+		p.To = to
+	}
 
 	comp.Out <- p
 }
 
-func SendMessage(from, message string) {
-	comp.Out <- xmpp.Message{To: PreferedJID, From: from, Body: message}
+func SendMessage(to, subject, message string) {
+	m := xmpp.Message{From: jid.Domain, To: to, Body: message, Type: "chat"}
+
+	if subject != "" {
+		m.Subject = subject
+	}
+
+	log.Printf("%sSenp message %v", LogInfo, m)
+	comp.Out <- m
+}
+
+func AddNewUser(jid, steamLogin, steamPwd string) {
+	log.Printf("%sAdd user %s to the map", LogInfo, jid)
+
+	// TODO Move Gateway creation into right package
+	g := new(gateway.GatewayInfo)
+	g.SteamLogin = steamLogin
+	g.SteamPassword = steamPwd
+	g.XMPP_JID_Client = jid
+	g.SentryFile = gateway.SentryDirectory + jid
+	g.FriendSteamId = make(map[string]struct{})
+
+	MapGatewayInfo[jid] = g
+	go g.Run()
 }
