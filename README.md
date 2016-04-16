@@ -24,9 +24,14 @@ go get git.kingpenguin.tk/chteufleur/go-xmpp4steam.git
 ```
 
 ### Configure
-Configure the gateway by editing the ``xmpp4steam.cfg`` file.
-The first time, let the variable ``steam_auth_code`` empty. After the first run of the gateway, Steam will send you a code that you have to give it in that variable. Then re-run the gateway and it should be OK.
+Configure the gateway by editing the ``xmpp4steam.cfg`` file in order to give all XMPP component information.
+
+### Utilization
+To register, you have to send an Ad-Hoc command to the gateway in order to give your Steam login information.
+When it done, send a presence to the gateway. It will try to connect to Steam, but should failed.
+Steam should send you a code that you have to give to the gateway using Ad-Hoc command.
+After giving the code to the gateway, send again a presence to it and it should be OK.
 
 
 ## Help
-To get any help, please visit the XMPP conference room at ``go-xmpp4steam@muc.kingpenguin.tk`` with your prefered client, or [with your browser](https://jappix.kingpenguin.tk/?r=go-xmpp4steam@muc.kingpenguin.tk).
+To get any help, please visit the XMPP conference room at [go-xmpp4steam@muc.kingpenguin.tk](xmpp:go-xmpp4steam@muc.kingpenguin.tk?join) with your prefered client, or [with your browser](https://jappix.kingpenguin.tk/?r=go-xmpp4steam@muc.kingpenguin.tk).
