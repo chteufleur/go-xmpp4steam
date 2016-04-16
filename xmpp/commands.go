@@ -54,6 +54,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			// Command Auth Code
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocForm, Title: "Steam Account Info", Instructions: "Please provide your Steam login and password."}
 			// TODO Warn that the given info is stored in database in clear
+			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo, Value: "Please, be aware that the given Steam account information will be saved into an un-encrypted SQLite database."}
 
 			field := &xmpp.AdHocField{Var: "login", Label: "Steam Login", Type: xmpp.TypeAdHocFieldTextSingle}
 			cmdXForm.Fields = append(cmdXForm.Fields, *field)
@@ -61,6 +62,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			cmdXForm.Fields = append(cmdXForm.Fields, *field)
 
 			cmd.XForm = *cmdXForm
+			cmd.Note = *note
 		}
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
