@@ -9,7 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strconv"
-	// "time"
+	"time"
 )
 
 const (
@@ -34,7 +34,7 @@ func (g *GatewayInfo) SteamRun() {
 	g.setLoginInfos()
 	g.SteamClient = steam.NewClient()
 	g.SteamConnecting = false
-	// g.SteamClient.ConnectionTimeout = 10 * time.Second
+	g.SteamClient.ConnectionTimeout = 10 * time.Second
 
 	g.mainSteam()
 
@@ -131,13 +131,8 @@ func (g *GatewayInfo) setLoginInfos() {
 
 	if err == nil {
 		g.SteamLoginInfo.SentryFileHash = sentryHash
-		log.Printf("%sAuthentification by SentryFileHash", LogSteamDebug)
-	} else if g.SteamAuthCode != "" {
-		g.SteamLoginInfo.AuthCode = g.SteamAuthCode
-		log.Printf("%sAuthentification by AuthCode (%s, %s, %s)", LogSteamDebug, g.SteamLoginInfo.Username, g.SteamLoginInfo.Password, g.SteamAuthCode)
-	} else {
-		log.Printf("%sFirst authentification (%s, %s)", LogSteamDebug, g.SteamLoginInfo.Username, g.SteamLoginInfo.Password)
 	}
+	log.Printf("%sAuthentification of (%s, %s)", LogSteamDebug, g.XMPP_JID_Client, g.SteamLoginInfo.Username)
 }
 
 func (g *GatewayInfo) IsSteamConnected() bool {

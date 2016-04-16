@@ -16,7 +16,6 @@ type GatewayInfo struct {
 	// Steam
 	SteamLogin      string
 	SteamPassword   string
-	SteamAuthCode   string
 	SteamLoginInfo  *steam.LogOnDetails
 	SteamClient     *steam.Client
 	SentryFile      string
@@ -33,5 +32,5 @@ func (g *GatewayInfo) Run() {
 }
 
 func (g *GatewayInfo) SetSteamAuthCode(authCode string) {
-	g.SteamAuthCode = authCode
+	g.SteamLoginInfo.AuthCode = authCode
 }

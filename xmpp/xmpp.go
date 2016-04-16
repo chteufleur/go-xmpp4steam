@@ -102,7 +102,9 @@ func must(v interface{}, err error) interface{} {
 
 func Disconnect() {
 	log.Printf("%sXMPP disconnect", LogInfo)
-	SendPresence(gateway.Status_offline, gateway.Type_unavailable, "", "", "", "")
+	for _, u := range MapGatewayInfo {
+		u.SteamDisconnect()
+	}
 }
 
 func SendPresence(status, tpye, from, to, message, nick string) {
@@ -153,6 +155,8 @@ func AddNewUser(jid, steamLogin, steamPwd string) {
 	g.XMPP_JID_Client = jid
 	g.SentryFile = gateway.SentryDirectory + jid
 	g.FriendSteamId = make(map[string]struct{})
+
+	g.XMPP_Out = comp.Out
 
 	MapGatewayInfo[jid] = g
 	go g.Run()

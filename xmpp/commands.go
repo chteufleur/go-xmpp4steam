@@ -53,6 +53,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 		} else if adHoc.Node == CommandGetIdentifiants {
 			// Command Auth Code
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocForm, Title: "Steam Account Info", Instructions: "Please provide your Steam login and password."}
+			// TODO Warn that the given info is stored in database in clear
 
 			field := &xmpp.AdHocField{Var: "login", Label: "Steam Login", Type: xmpp.TypeAdHocFieldTextSingle}
 			cmdXForm.Fields = append(cmdXForm.Fields, *field)
@@ -131,9 +132,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 					isSqlSuccess = dbUser.AddLine()
 				}
 				if isSqlSuccess {
-					if !isUserRegistred {
-						AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd)
-					}
+					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd)
 					note.Value = "Command succeded !"
 				} else {
 					note.Value = "Error append while executing command"

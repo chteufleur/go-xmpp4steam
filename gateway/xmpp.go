@@ -132,6 +132,7 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, from, message, nick string)
 		p.Nick = nick
 	}
 	if from == "" {
+		// TODO add an option to allow message comming directly from the gateway
 		p.From = XmppJidComponent
 	} else {
 		p.From = from
