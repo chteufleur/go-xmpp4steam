@@ -42,7 +42,8 @@ func Run() {
 	comp = must(xmpp.NewComponentXMPP(stream, jid, Secret)).(*xmpp.XMPP)
 
 	mainXMPP()
-	ChanAction <- ActionMainMethodEnded
+	log.Printf("%sReach main method's end", LogInfo)
+	go Run()
 }
 
 func mainXMPP() {
@@ -157,6 +158,7 @@ func AddNewUser(jid, steamLogin, steamPwd string) {
 	g.FriendSteamId = make(map[string]struct{})
 
 	g.XMPP_Out = comp.Out
+	g.XMPP_Connected_Client = make(map[string]bool)
 
 	MapGatewayInfo[jid] = g
 	go g.Run()
