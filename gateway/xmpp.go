@@ -45,6 +45,16 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 
 	transfertPresence := false
 
+	jid := strings.SplitN(presence.From, "/", 2)
+	if len(jid) == 2 {
+		// Resource exist —> client speaking
+		if presence.Type == Type_available {
+			g.XMPP_Connected_Client[presence.From] = true
+		} else if presence.Type == Type_unavailable {
+			delete(g.XMPP_Connected_Client, presence.From)
+		}
+	}
+
 	if presence.Type == Type_subscribe {
 		// Send presence to tell that the JID has been added to roster
 		g.SendXmppPresence("", Type_subscribed, presence.To, g.XMPP_JID_Client, "")
@@ -56,11 +66,12 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 		// Destination is gateway itself
 		if presence.Type == Type_unavailable {
 			// Disconnect
-			// TODO multi client connected management
-			g.XMPP_Disconnect()
-			go g.SteamDisconnect()
+			if len(g.XMPP_Connected_Client) <= 0 {
+				g.XMPP_Disconnect()
+				go g.SteamDisconnect()
+			}
 		} else if presence.Type == Type_available {
-			// TODO multi client connected management
+			g.XMPP_Connect()
 			go g.SteamConnect()
 			transfertPresence = true
 		}
@@ -69,11 +80,12 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 		// Destination is Steam user
 		if presence.Type == Type_unavailable {
 			// Disconnect
-			// TODO multi client connected management
-			g.XMPP_Disconnect()
-			go g.SteamDisconnect()
+			if len(g.XMPP_Connected_Client) <= 0 {
+				g.XMPP_Disconnect()
+				go g.SteamDisconnect()
+			}
 		} else if presence.Type == Type_available {
-			// TODO multi client connected management
+			g.XMPP_Connect()
 			go g.SteamConnect()
 			transfertPresence = true
 		}
@@ -112,7 +124,12 @@ func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 	g.SendSteamMessage(steamID, message.Subject+"\n"+message.Body)
 }
 
+func (g *GatewayInfo) XMPP_Connect() {
+	// TODO multi client connected management
+}
+
 func (g *GatewayInfo) XMPP_Disconnect() {
+// TODO multi client connected management
 	g.SendXmppPresence(Status_offline, Type_unavailable, "", "", "")
 }
 
