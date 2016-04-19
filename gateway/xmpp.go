@@ -129,7 +129,7 @@ func (g *GatewayInfo) XMPP_Connect() {
 }
 
 func (g *GatewayInfo) XMPP_Disconnect() {
-// TODO multi client connected management
+	// TODO multi client connected management
 	g.SendXmppPresence(Status_offline, Type_unavailable, "", "", "")
 }
 
