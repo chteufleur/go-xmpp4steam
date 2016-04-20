@@ -114,7 +114,7 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 
 		if g.IsSteamConnected() {
 			g.SendSteamPresence(steamStatus)
-			g.SendXmppPresence(presence.Show, presence.Type, "", VersionToSend, "")
+			g.SendXmppPresence(presence.Show, presence.Type, "", presence.Status, "")
 		}
 	}
 }

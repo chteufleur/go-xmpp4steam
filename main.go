@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Version               = "go-xmpp4steam v0.3.4"
+	Version               = "v0.3.5"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
@@ -24,7 +24,7 @@ var (
 )
 
 func init() {
-	gateway.VersionToSend = Version
+	xmpp.SoftVersion = Version
 	err := cfg.Load(configurationFilePath, mapConfig)
 	if err != nil {
 		log.Fatal("Failed to load configuration file.", err)

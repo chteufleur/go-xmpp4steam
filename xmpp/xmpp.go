@@ -23,6 +23,8 @@ var (
 	JidStr = ""
 	Secret = ""
 
+	SoftVersion = ""
+
 	jid    xmpp.JID
 	stream = new(xmpp.Stream)
 	comp   = new(xmpp.XMPP)
@@ -83,6 +85,22 @@ func mainXMPP() {
 
 			case xmpp.NodeAdHocCommand:
 				execCommandAdHoc(v)
+
+			case xmpp.NsVCardTemp:
+				reply := v.Response(xmpp.IqTypeResult)
+				vcard := &xmpp.VCard{}
+				reply.PayloadEncode(vcard)
+				comp.Out <- reply
+
+			case xmpp.NsJabberClient:
+				reply := v.Response(xmpp.IqTypeResult)
+				reply.PayloadEncode(&xmpp.SoftwareVersion{Name: "go-xmpp4steam", Version: SoftVersion})
+				comp.Out <- reply
+
+			default:
+				reply := v.Response(xmpp.IqTypeError)
+				reply.PayloadEncode(xmpp.NewError("cancel", xmpp.FeatureNotImplemented, ""))
+				comp.Out <- reply
 			}
 
 		default:

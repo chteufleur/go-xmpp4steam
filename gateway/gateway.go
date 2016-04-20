@@ -8,10 +8,6 @@ const (
 	SentryDirectory = "sentries/"
 )
 
-var (
-	VersionToSend = ""
-)
-
 type GatewayInfo struct {
 	// Steam
 	SteamLogin      string
