@@ -1,7 +1,7 @@
 package xmpp
 
 import (
-	"git.kingpenguin.tk/chteufleur/go-xmpp.git"
+	"git.kingpenguin.tk/chteufleur/go-xmpp.git/src/xmpp"
 	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/gateway"
 
 	"log"
