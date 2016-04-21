@@ -11,6 +11,7 @@ import (
 const (
 	CommandAuthcode        = "steamAuthCodeCommand"
 	CommandGetIdentifiants = "steamGetIdentifiants"
+	CommandDisconnectSteam = "disconnectSteam"
 )
 
 var (
@@ -26,6 +27,8 @@ func execDiscoCommand(iq *xmpp.Iq) {
 	discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
 	discoItem.Item = append(discoItem.Item, *discoI)
 	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
+	discoItem.Item = append(discoItem.Item, *discoI)
+	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
 	discoItem.Item = append(discoItem.Item, *discoI)
 
 	reply.PayloadEncode(discoItem)
@@ -61,6 +64,21 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			cmdXForm.Fields = append(cmdXForm.Fields, *field)
 
 			cmd.XForm = *cmdXForm
+			cmd.Note = *note
+		} else if adHoc.Node == CommandDisconnectSteam {
+			cmd.Status = xmpp.StatusAdHocCompleted
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Force Steam deconnexion"}
+			cmd.XForm = *cmdXForm
+			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
+
+			jidBare := strings.SplitN(iq.From, "/", 2)[0]
+			g := MapGatewayInfo[jidBare]
+			if g != nil {
+				g.Disconnect()
+				note.Value = "Send deconnexion on Steam network"
+			} else {
+				note.Value = "Your are not registred."
+			}
 			cmd.Note = *note
 		}
 		reply.PayloadEncode(cmd)

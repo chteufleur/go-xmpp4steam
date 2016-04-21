@@ -167,7 +167,6 @@ func SendMessage(to, subject, message string) {
 func AddNewUser(jid, steamLogin, steamPwd string) {
 	log.Printf("%sAdd user %s to the map", LogInfo, jid)
 
-	// TODO Move Gateway creation into right package
 	g := new(gateway.GatewayInfo)
 	g.SteamLogin = steamLogin
 	g.SteamPassword = steamPwd

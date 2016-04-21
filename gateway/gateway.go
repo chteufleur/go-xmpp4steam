@@ -31,3 +31,8 @@ func (g *GatewayInfo) Run() {
 func (g *GatewayInfo) SetSteamAuthCode(authCode string) {
 	g.SteamLoginInfo.AuthCode = authCode
 }
+
+func (g *GatewayInfo) Disconnect() {
+	g.XMPP_Disconnect()
+	go g.SteamDisconnect()
+}

@@ -67,11 +67,9 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 		if presence.Type == Type_unavailable {
 			// Disconnect
 			if len(g.XMPP_Connected_Client) <= 0 {
-				g.XMPP_Disconnect()
-				go g.SteamDisconnect()
+				g.Disconnect()
 			}
 		} else if presence.Type == Type_available {
-			g.XMPP_Connect()
 			go g.SteamConnect()
 			transfertPresence = true
 		}
@@ -81,11 +79,9 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 		if presence.Type == Type_unavailable {
 			// Disconnect
 			if len(g.XMPP_Connected_Client) <= 0 {
-				g.XMPP_Disconnect()
-				go g.SteamDisconnect()
+				g.Disconnect()
 			}
 		} else if presence.Type == Type_available {
-			g.XMPP_Connect()
 			go g.SteamConnect()
 			transfertPresence = true
 		}
@@ -124,12 +120,7 @@ func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 	g.SendSteamMessage(steamID, message.Subject+"\n"+message.Body)
 }
 
-func (g *GatewayInfo) XMPP_Connect() {
-	// TODO multi client connected management
-}
-
 func (g *GatewayInfo) XMPP_Disconnect() {
-	// TODO multi client connected management
 	g.SendXmppPresence(Status_offline, Type_unavailable, "", "", "")
 }
 
