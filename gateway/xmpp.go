@@ -39,7 +39,7 @@ var (
 )
 
 func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
-	if presence.Type == Type_probe || presence.Type == Type_error {
+	if presence.Type == Type_error {
 		return
 	}
 
@@ -55,9 +55,16 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 		}
 	}
 
-	if presence.Type == Type_subscribe {
+	if presence.Type == Type_probe {
+		steamId := strings.SplitN(strings.SplitN(presence.To, "/", 2)[0], "@", 2)[0]
+		steamFriendStatus := g.FriendSteamId[steamId]
+		if steamFriendStatus != nil {
+			g.SendXmppPresence(steamFriendStatus.XMPP_Status, steamFriendStatus.XMPP_Type, "", steamId+"@"+XmppJidComponent, steamFriendStatus.SteamGameName, steamFriendStatus.SteamName)
+		}
+
+	} else if presence.Type == Type_subscribe {
 		// Send presence to tell that the JID has been added to roster
-		g.SendXmppPresence("", Type_subscribed, presence.To, g.XMPP_JID_Client, "")
+		g.SendXmppPresence("", Type_subscribed, presence.From, presence.To, g.XMPP_JID_Client, "")
 
 	} else if presence.Type == Type_subscribed {
 	} else if presence.Type == Type_unsubscribe {
@@ -110,7 +117,7 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 
 		if g.IsSteamConnected() {
 			g.SendSteamPresence(steamStatus)
-			g.SendXmppPresence(presence.Show, presence.Type, "", presence.Status, "")
+			g.SendXmppPresence(presence.Show, presence.Type, presence.From, "", presence.Status, "")
 		}
 	}
 }
@@ -121,11 +128,11 @@ func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 }
 
 func (g *GatewayInfo) XMPP_Disconnect() {
-	g.SendXmppPresence(Status_offline, Type_unavailable, "", "", "")
+	g.SendXmppPresence(Status_offline, Type_unavailable, "", "", "", "")
 }
 
-func (g *GatewayInfo) SendXmppPresence(status, tpye, from, message, nick string) {
-	p := xmpp.Presence{To: g.XMPP_JID_Client}
+func (g *GatewayInfo) SendXmppPresence(status, tpye, to, from, message, nick string) {
+	p := xmpp.Presence{}
 
 	if status != "" {
 		p.Show = status
@@ -138,6 +145,11 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, from, message, nick string)
 	}
 	if nick != "" {
 		p.Nick = nick
+	}
+	if to == "" {
+		p.To = g.XMPP_JID_Client
+	} else {
+		p.To = to
 	}
 	if from == "" {
 		// TODO add an option to allow message comming directly from the gateway

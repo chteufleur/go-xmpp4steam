@@ -106,10 +106,15 @@ func (g *GatewayInfo) mainSteam() {
 			}
 			if _, ok := g.FriendSteamId[steamId]; !ok {
 				// Send subscribsion
-				g.SendXmppPresence(status, Type_subscribe, steamId+"@"+XmppJidComponent, gameName, name)
-				g.FriendSteamId[steamId] = struct{}{}
+				g.SendXmppPresence(status, Type_subscribe, "", steamId+"@"+XmppJidComponent, gameName, name)
+				g.FriendSteamId[steamId] = &StatusSteamFriend{XMPP_Status: status, XMPP_Type: tpye}
+			} else {
+				g.FriendSteamId[steamId].XMPP_Status = status
+				g.FriendSteamId[steamId].XMPP_Type = tpye
+				g.FriendSteamId[steamId].SteamGameName = gameName
+				g.FriendSteamId[steamId].SteamName = name
 			}
-			g.SendXmppPresence(status, tpye, steamId+"@"+XmppJidComponent, gameName, name)
+			g.SendXmppPresence(status, tpye, "", steamId+"@"+XmppJidComponent, gameName, name)
 
 		case *steam.ChatMsgEvent:
 			// Message received
@@ -181,7 +186,7 @@ func (g *GatewayInfo) SteamDisconnect() {
 
 func (g *GatewayInfo) DisconnectAllSteamFriend() {
 	for sid, _ := range g.FriendSteamId {
-		g.SendXmppPresence(Status_offline, Type_unavailable, sid+"@"+XmppJidComponent, "", "")
+		g.SendXmppPresence(Status_offline, Type_unavailable, "", sid+"@"+XmppJidComponent, "", "")
 		delete(g.FriendSteamId, sid)
 	}
 }

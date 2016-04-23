@@ -172,7 +172,7 @@ func AddNewUser(jid, steamLogin, steamPwd string) {
 	g.SteamPassword = steamPwd
 	g.XMPP_JID_Client = jid
 	g.SentryFile = gateway.SentryDirectory + jid
-	g.FriendSteamId = make(map[string]struct{})
+	g.FriendSteamId = make(map[string]*gateway.StatusSteamFriend)
 
 	g.XMPP_Out = comp.Out
 	g.XMPP_Connected_Client = make(map[string]bool)

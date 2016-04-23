@@ -15,13 +15,20 @@ type GatewayInfo struct {
 	SteamLoginInfo  *steam.LogOnDetails
 	SteamClient     *steam.Client
 	SentryFile      string
-	FriendSteamId   map[string]struct{}
+	FriendSteamId   map[string]*StatusSteamFriend
 	SteamConnecting bool
 
 	// XMPP
 	XMPP_JID_Client       string
 	XMPP_Out              chan interface{}
 	XMPP_Connected_Client map[string]bool
+}
+
+type StatusSteamFriend struct {
+	XMPP_Status   string
+	XMPP_Type     string
+	SteamGameName string
+	SteamName     string
 }
 
 func (g *GatewayInfo) Run() {
