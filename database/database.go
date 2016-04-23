@@ -49,6 +49,12 @@ func Close() {
 
 func (newLine *DatabaseLine) AddLine() bool {
 	log.Printf("%sAdd new line %v", LogInfo, newLine)
+
+	isUserRegistred := getLine(newLine.Jid) != nil
+	if isUserRegistred {
+		return newLine.UpdateLine()
+	}
+
 	stmt, err := db.Prepare(insertDatabaseStmt)
 	if err != nil {
 		log.Printf("%sError on insert jid %s", LogError, newLine.Jid, err)
@@ -82,34 +88,51 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 }
 
 func RemoveLine(jid string) bool {
+	line := new(DatabaseLine)
+	line.Jid = jid
+	return line.UpdateLine()
+
 	// FIXME not working
-	log.Printf("%sRemove line %s", LogInfo, jid)
+	/*
+		log.Printf("%sRemove line %s", LogInfo, jid)
 
-	stmt, err := db.Prepare(deleteDatabaseStmt)
-	if err != nil {
-		log.Printf("%sError on delete jid %s", LogError, jid, err)
-		return false
-	}
-	defer stmt.Close()
-	res, err := stmt.Exec(jid)
-	if err != nil {
-		log.Printf("%sError on delete SQL statement", LogError, err)
-		return false
-	}
+		stmt, err := db.Prepare(deleteDatabaseStmt)
+		if err != nil {
+			log.Printf("%sError on delete jid %s", LogError, jid, err)
+			return false
+		}
+		defer stmt.Close()
+		res, err := stmt.Exec(jid)
+		if err != nil {
+			log.Printf("%sError on delete SQL statement", LogError, err)
+			return false
+		}
 
-	affect, err := res.RowsAffected()
-	if err != nil {
-		log.Printf("%sError on delete SQL statement", LogError, err)
-		return false
-	}
-	if affect == 0 {
-		return false
-	}
+		affect, err := res.RowsAffected()
+		if err != nil {
+			log.Printf("%sError on delete SQL statement", LogError, err)
+			return false
+		}
+		if affect == 0 {
+			return false
+		}
 
-	return true
+		return true
+	*/
 }
 
 func GetLine(jid string) *DatabaseLine {
+	ret := getLine(jid)
+
+	if ret.SteamLogin == "" {
+		log.Printf("%sLine empty", LogDebug)
+		return nil
+	}
+
+	return ret
+}
+
+func getLine(jid string) *DatabaseLine {
 	log.Printf("%sGet line %s", LogInfo, jid)
 	ret := new(DatabaseLine)
 
@@ -141,7 +164,9 @@ func GetAllLines() []DatabaseLine {
 	for rows.Next() {
 		user := new(DatabaseLine)
 		rows.Scan(&user.Jid, &user.SteamLogin, &user.SteamPwd)
-		ret = append(ret, *user)
+		if user.SteamLogin != "" {
+			ret = append(ret, *user)
+		}
 	}
 
 	return ret

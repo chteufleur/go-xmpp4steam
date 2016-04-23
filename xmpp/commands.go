@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	CommandAuthcode        = "steamAuthCodeCommand"
-	CommandGetIdentifiants = "steamGetIdentifiants"
-	CommandDisconnectSteam = "disconnectSteam"
+	CommandAuthcode           = "steamAuthCodeCommand"
+	CommandGetIdentifiants    = "steamGetIdentifiants"
+	CommandDisconnectSteam    = "disconnectSteam"
+	CommandRemoveRegistration = "removeRegistration"
 )
 
 var (
@@ -29,6 +30,8 @@ func execDiscoCommand(iq *xmpp.Iq) {
 	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
 	discoItem.Item = append(discoItem.Item, *discoI)
 	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
+	discoItem.Item = append(discoItem.Item, *discoI)
+	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
 	discoItem.Item = append(discoItem.Item, *discoI)
 
 	reply.PayloadEncode(discoItem)
@@ -79,6 +82,20 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			} else {
 				note.Value = "Your are not registred."
 			}
+			cmd.Note = *note
+		} else if adHoc.Node == CommandRemoveRegistration {
+			cmd.Status = xmpp.StatusAdHocCompleted
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Remove registration"}
+			cmd.XForm = *cmdXForm
+			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
+
+			jidBare := strings.SplitN(iq.From, "/", 2)[0]
+			if RemoveUser(jidBare) {
+				note.Value = "Remove registration success."
+			} else {
+				note.Value = "Failed to remove your registration."
+			}
+
 			cmd.Note = *note
 		}
 		reply.PayloadEncode(cmd)

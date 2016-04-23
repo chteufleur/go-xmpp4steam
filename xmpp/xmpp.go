@@ -2,6 +2,7 @@ package xmpp
 
 import (
 	"git.kingpenguin.tk/chteufleur/go-xmpp.git/src/xmpp"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/database"
 	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/gateway"
 
 	"log"
@@ -173,10 +174,26 @@ func AddNewUser(jid, steamLogin, steamPwd string) {
 	g.XMPP_JID_Client = jid
 	g.SentryFile = gateway.SentryDirectory + jid
 	g.FriendSteamId = make(map[string]*gateway.StatusSteamFriend)
+	g.Deleting = false
 
 	g.XMPP_Out = comp.Out
 	g.XMPP_Connected_Client = make(map[string]bool)
 
 	MapGatewayInfo[jid] = g
 	go g.Run()
+}
+
+func RemoveUser(jidBare string) bool {
+	ret := database.RemoveLine(jidBare)
+
+	if ret {
+		g := MapGatewayInfo[jidBare]
+		ret = g != nil
+		if ret {
+			g.Delete()
+			MapGatewayInfo[jidBare] = nil
+		}
+	}
+
+	return ret
 }

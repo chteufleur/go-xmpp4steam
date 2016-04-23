@@ -30,6 +30,11 @@ const (
 )
 
 func (g *GatewayInfo) SteamRun() {
+	if g.Deleting {
+		log.Printf("%sDeleting gateway", LogSteamInfo)
+		return
+	}
+
 	log.Printf("%sRunning", LogSteamInfo)
 	g.setLoginInfos()
 	g.SteamClient = steam.NewClient()
@@ -141,7 +146,14 @@ func (g *GatewayInfo) setLoginInfos() {
 }
 
 func (g *GatewayInfo) IsSteamConnected() bool {
-	return g.SteamClient.Connected()
+	ret := g != nil
+	if ret {
+		ret = g.SteamClient != nil
+		if ret {
+			ret = g.SteamClient.Connected()
+		}
+	}
+	return ret
 }
 
 func (g *GatewayInfo) SteamConnect() {

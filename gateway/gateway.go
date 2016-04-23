@@ -18,6 +18,7 @@ type GatewayInfo struct {
 	SentryFile      string
 	FriendSteamId   map[string]*StatusSteamFriend
 	SteamConnecting bool
+	Deleting        bool
 
 	// XMPP
 	XMPP_JID_Client       string
@@ -43,4 +44,9 @@ func (g *GatewayInfo) SetSteamAuthCode(authCode string) {
 func (g *GatewayInfo) Disconnect() {
 	g.XMPP_Disconnect()
 	go g.SteamDisconnect()
+}
+
+func (g *GatewayInfo) Delete() {
+	g.Deleting = true
+	g.Disconnect()
 }

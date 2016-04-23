@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Version               = "v0.3.7"
+	Version               = "v0.3.8"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
