@@ -153,9 +153,9 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, to, from, message, nick str
 	}
 	if from == "" {
 		// TODO add an option to allow message comming directly from the gateway
-		p.From = XmppJidComponent
+		p.From = XmppJidComponent + "/" + resource
 	} else {
-		p.From = from+"/"+resource
+		p.From = from + "/" + resource
 	}
 
 	log.Printf("%sSend presence %v", LogXmppInfo, p)

@@ -6,7 +6,7 @@ import (
 
 const (
 	SentryDirectory = "sentries/"
-	resource = "go-xmpp4steam"
+	resource        = "go-xmpp4steam"
 )
 
 type GatewayInfo struct {
