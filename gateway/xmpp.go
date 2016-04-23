@@ -46,6 +46,7 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 	transfertPresence := false
 
 	jid := strings.SplitN(presence.From, "/", 2)
+	steamJid := strings.SplitN(strings.SplitN(presence.To, "/", 2)[0], "@", 2)
 	if len(jid) == 2 {
 		// Resource exist —> client speaking
 		if presence.Type == Type_available {
@@ -56,10 +57,9 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 	}
 
 	if presence.Type == Type_probe {
-		steamId := strings.SplitN(strings.SplitN(presence.To, "/", 2)[0], "@", 2)[0]
-		steamFriendStatus := g.FriendSteamId[steamId]
+		steamFriendStatus := g.FriendSteamId[steamJid[0]]
 		if steamFriendStatus != nil {
-			g.SendXmppPresence(steamFriendStatus.XMPP_Status, steamFriendStatus.XMPP_Type, "", steamId+"@"+XmppJidComponent, steamFriendStatus.SteamGameName, steamFriendStatus.SteamName)
+			g.SendXmppPresence(steamFriendStatus.XMPP_Status, steamFriendStatus.XMPP_Type, "", steamJid[0]+"@"+XmppJidComponent, steamFriendStatus.SteamGameName, steamFriendStatus.SteamName)
 		}
 
 	} else if presence.Type == Type_subscribe {
@@ -155,7 +155,7 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, to, from, message, nick str
 		// TODO add an option to allow message comming directly from the gateway
 		p.From = XmppJidComponent
 	} else {
-		p.From = from
+		p.From = from+"/"+resource
 	}
 
 	log.Printf("%sSend presence %v", LogXmppInfo, p)
