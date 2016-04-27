@@ -11,8 +11,8 @@ const (
 
 	createDatabaseStmt = "create table if not exists users (jid text not null primary key, steamLogin text, steamPwd text);"
 	insertDatabaseStmt = "insert into users (jid, steamLogin, steamPwd) values(?, ?, ?)"
-	deleteDatabaseStmt = "delete from users where jid = ?"
-	selectDatabaseStmt = "select jid, steamLogin, steamPwd from users where jid = ?"
+	deleteDatabaseStmt = "delete from users where jid=?"
+	selectDatabaseStmt = "select jid, steamLogin, steamPwd from users where jid=?"
 	updateDatabaseStmt = "update users set steamLogin=?, steamPwd=? where jid=?"
 
 	LogInfo  = "\t[SQLITE INFO]\t"
@@ -88,37 +88,36 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 }
 
 func RemoveLine(jid string) bool {
+	// Update Steam login and password to blank before deleting,
+	// because it is not really deleted in the SQLite file.
 	line := new(DatabaseLine)
 	line.Jid = jid
-	return line.UpdateLine()
+	line.UpdateLine()
 
-	// FIXME not working
-	/*
-		log.Printf("%sRemove line %s", LogInfo, jid)
+	log.Printf("%sRemove line %s", LogInfo, jid)
+	stmt, err := db.Prepare(deleteDatabaseStmt)
+	if err != nil {
+		log.Printf("%sError on delete jid %s", LogError, jid, err)
+		return false
+	}
+	defer stmt.Close()
+	res, err := stmt.Exec(jid)
+	if err != nil {
+		log.Printf("%sError on delete SQL statement", LogError, err)
+		return false
+	}
 
-		stmt, err := db.Prepare(deleteDatabaseStmt)
-		if err != nil {
-			log.Printf("%sError on delete jid %s", LogError, jid, err)
-			return false
-		}
-		defer stmt.Close()
-		res, err := stmt.Exec(jid)
-		if err != nil {
-			log.Printf("%sError on delete SQL statement", LogError, err)
-			return false
-		}
+	affect, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("%sError on delete SQL statement", LogError, err)
+		return false
+	}
+	if affect == 0 {
+		log.Printf("%sNo line affected", LogDebug)
+		return false
+	}
 
-		affect, err := res.RowsAffected()
-		if err != nil {
-			log.Printf("%sError on delete SQL statement", LogError, err)
-			return false
-		}
-		if affect == 0 {
-			return false
-		}
-
-		return true
-	*/
+	return true
 }
 
 func GetLine(jid string) *DatabaseLine {
