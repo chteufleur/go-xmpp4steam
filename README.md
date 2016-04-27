@@ -9,6 +9,7 @@ go-xmpp4steam is a XMPP/Steam gateway.
 
  * [go-xmpp](https://git.kingpenguin.tk/chteufleur/go-xmpp) for the XMPP part.
  * [go-steam](https://github.com/Philipp15b/go-steam) for the steam part.
+ * [go-sqlite3](https://github.com/mattn/go-sqlite3) for the database part.
  * [cfg](https://github.com/jimlawless/cfg) for the configuration file.
 
 
