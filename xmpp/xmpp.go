@@ -137,9 +137,9 @@ func must(v interface{}, err error) interface{} {
 }
 
 func sendNotSupportedFeature(iq *xmpp.Iq) {
-		reply := iq.Response(xmpp.IQTypeError)
-		reply.PayloadEncode(xmpp.NewError("cancel", xmpp.FeatureNotImplemented, ""))
-		comp.Out <- reply
+	reply := iq.Response(xmpp.IQTypeError)
+	reply.PayloadEncode(xmpp.NewError("cancel", xmpp.FeatureNotImplemented, ""))
+	comp.Out <- reply
 }
 
 func Disconnect() {
