@@ -80,28 +80,44 @@ func mainXMPP() {
 			}
 
 		case *xmpp.Iq:
+			jidBare := strings.SplitN(v.To, "/", 2)[0]
+
 			switch v.PayloadName().Space {
-			case xmpp.NsDiscoItems:
-				execDiscoCommand(v)
+			case xmpp.NSDiscoItems:
+				if jidBare == jid.Domain {
+					execDiscoCommand(v)
+				} else {
+					sendNotSupportedFeature(v)
+				}
 
 			case xmpp.NodeAdHocCommand:
-				execCommandAdHoc(v)
+				if jidBare == jid.Domain {
+					execCommandAdHoc(v)
+				} else {
+					sendNotSupportedFeature(v)
+				}
 
-			case xmpp.NsVCardTemp:
-				reply := v.Response(xmpp.IqTypeResult)
-				vcard := &xmpp.VCard{}
-				reply.PayloadEncode(vcard)
-				comp.Out <- reply
+			case xmpp.NSVCardTemp:
+				if jidBare == jid.Domain {
+					reply := v.Response(xmpp.IQTypeResult)
+					vcard := &xmpp.VCard{}
+					reply.PayloadEncode(vcard)
+					comp.Out <- reply
+				} else {
+					sendNotSupportedFeature(v)
+				}
 
-			case xmpp.NsJabberClient:
-				reply := v.Response(xmpp.IqTypeResult)
-				reply.PayloadEncode(&xmpp.SoftwareVersion{Name: "go-xmpp4steam", Version: SoftVersion})
-				comp.Out <- reply
+			case xmpp.NSJabberClient:
+				if jidBare == jid.Domain {
+					reply := v.Response(xmpp.IQTypeResult)
+					reply.PayloadEncode(&xmpp.SoftwareVersion{Name: "go-xmpp4steam", Version: SoftVersion})
+					comp.Out <- reply
+				} else {
+					sendNotSupportedFeature(v)
+				}
 
 			default:
-				reply := v.Response(xmpp.IqTypeError)
-				reply.PayloadEncode(xmpp.NewError("cancel", xmpp.FeatureNotImplemented, ""))
-				comp.Out <- reply
+				sendNotSupportedFeature(v)
 			}
 
 		default:
@@ -118,6 +134,12 @@ func must(v interface{}, err error) interface{} {
 		log.Fatal(LogError, err)
 	}
 	return v
+}
+
+func sendNotSupportedFeature(iq *xmpp.Iq) {
+		reply := iq.Response(xmpp.IQTypeError)
+		reply.PayloadEncode(xmpp.NewError("cancel", xmpp.FeatureNotImplemented, ""))
+		comp.Out <- reply
 }
 
 func Disconnect() {

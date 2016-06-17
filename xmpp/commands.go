@@ -21,7 +21,7 @@ var (
 
 func execDiscoCommand(iq *xmpp.Iq) {
 	log.Printf("%sDiscovery item iq received", LogInfo)
-	reply := iq.Response(xmpp.IqTypeResult)
+	reply := iq.Response(xmpp.IQTypeResult)
 	discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
 
 	// Add available commands
@@ -42,12 +42,12 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 	adHoc := &xmpp.AdHocCommand{}
 	iq.PayloadDecode(adHoc)
 
-	if adHoc.SessionId == "" && adHoc.Action == xmpp.ActionAdHocExecute {
+	if adHoc.SessionID == "" && adHoc.Action == xmpp.ActionAdHocExecute {
 		// First step in the command
 		log.Printf("%sAd-Hoc command (Node : %s). First step.", LogInfo, adHoc.Node)
 
-		reply := iq.Response(xmpp.IqTypeResult)
-		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocExecute, SessionId: xmpp.SessionId()}
+		reply := iq.Response(xmpp.IQTypeResult)
+		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocExecute, SessionID: xmpp.SessionID()}
 		if adHoc.Node == CommandAuthcode {
 			// Command Auth Code
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocForm, Title: "Steam Auth Code", Instructions: "Please provide the auth code that Steam sended to you."}
@@ -103,8 +103,8 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 	} else if adHoc.Action == xmpp.ActionAdHocExecute {
 		// Last step in the command
 		log.Printf("%sAd-Hoc command (Node : %s). Last step.", LogInfo, adHoc.Node)
-		reply := iq.Response(xmpp.IqTypeResult)
-		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCompleted, SessionId: adHoc.SessionId}
+		reply := iq.Response(xmpp.IQTypeResult)
+		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCompleted, SessionID: adHoc.SessionID}
 
 		if adHoc.Node == CommandAuthcode && adHoc.XForm.Type == xmpp.TypeAdHocSubmit {
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Steam Auth Code"}
@@ -185,8 +185,8 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 	} else if adHoc.Action == xmpp.ActionAdHocCancel {
 		// command canceled
 		log.Printf("%sAd-Hoc command (Node : %s). Command canceled.", LogInfo, adHoc.Node)
-		reply := iq.Response(xmpp.IqTypeResult)
-		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCanceled, SessionId: adHoc.SessionId}
+		reply := iq.Response(xmpp.IQTypeResult)
+		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCanceled, SessionID: adHoc.SessionID}
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
 	}

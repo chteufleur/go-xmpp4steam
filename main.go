@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	Version               = "v0.3.8"
+	Version               = "v1.0-dev"
 	configurationFilePath = "xmpp4steam.cfg"
 )
 
@@ -53,6 +53,6 @@ func main() {
 
 	xmpp.Disconnect()
 
-	time.Sleep(1 * time.Second)
 	log.Println("Exit main()")
+	time.Sleep(1 * time.Second)
 }
