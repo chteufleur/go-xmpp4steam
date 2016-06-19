@@ -187,7 +187,7 @@ func SendMessage(to, subject, message string) {
 	comp.Out <- m
 }
 
-func AddNewUser(jid, steamLogin, steamPwd string) {
+func AddNewUser(jid, steamLogin, steamPwd string, debugMessage bool) {
 	log.Printf("%sAdd user %s to the map", LogInfo, jid)
 
 	g := new(gateway.GatewayInfo)
@@ -200,6 +200,7 @@ func AddNewUser(jid, steamLogin, steamPwd string) {
 
 	g.XMPP_Out = comp.Out
 	g.XMPP_Connected_Client = make(map[string]bool)
+	g.DebugMessage = debugMessage
 
 	MapGatewayInfo[jid] = g
 	go g.Run()

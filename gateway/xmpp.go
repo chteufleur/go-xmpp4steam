@@ -163,12 +163,14 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, to, from, message, nick str
 }
 
 func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
-	m := xmpp.Message{To: g.XMPP_JID_Client, From: from, Body: message, Type: "chat"}
+	if from != XmppJidComponent || from == XmppJidComponent && g.DebugMessage {
+		m := xmpp.Message{To: g.XMPP_JID_Client, From: from, Body: message, Type: "chat"}
 
-	if subject != "" {
-		m.Subject = subject
+		if subject != "" {
+			m.Subject = subject
+		}
+
+		log.Printf("%sSend message %v", LogXmppInfo, m)
+		g.XMPP_Out <- m
 	}
-
-	log.Printf("%sSend message %v", LogXmppInfo, m)
-	g.XMPP_Out <- m
 }

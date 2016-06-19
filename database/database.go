@@ -9,11 +9,11 @@ import (
 const (
 	databaseFile = "go_xmpp4steam.db"
 
-	createDatabaseStmt = "create table if not exists users (jid text not null primary key, steamLogin text, steamPwd text);"
-	insertDatabaseStmt = "insert into users (jid, steamLogin, steamPwd) values(?, ?, ?)"
+	createDatabaseStmt = "create table if not exists users (jid text not null primary key, steamLogin text, steamPwd text, debug int);"
+	insertDatabaseStmt = "insert into users (jid, steamLogin, steamPwd, debug) values(?, ?, ?, ?)"
 	deleteDatabaseStmt = "delete from users where jid=?"
-	selectDatabaseStmt = "select jid, steamLogin, steamPwd from users where jid=?"
-	updateDatabaseStmt = "update users set steamLogin=?, steamPwd=? where jid=?"
+	selectDatabaseStmt = "select jid, steamLogin, steamPwd, debug from users where jid=?"
+	updateDatabaseStmt = "update users set steamLogin=?, steamPwd=?, debug=? where jid=?"
 
 	LogInfo  = "\t[SQLITE INFO]\t"
 	LogError = "\t[SQLITE ERROR]\t"
@@ -24,6 +24,7 @@ type DatabaseLine struct {
 	Jid        string
 	SteamLogin string
 	SteamPwd   string
+	Debug      bool
 }
 
 var (
@@ -61,7 +62,11 @@ func (newLine *DatabaseLine) AddLine() bool {
 		return false
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(newLine.Jid, newLine.SteamLogin, newLine.SteamPwd)
+	debug := 0
+	if newLine.Debug {
+		debug = 1
+	}
+	_, err = stmt.Exec(newLine.Jid, newLine.SteamLogin, newLine.SteamPwd, debug)
 	if err != nil {
 		log.Printf("%sError on creating SQL statement", LogError, err)
 		return false
@@ -78,7 +83,11 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 		return false
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(newLine.SteamLogin, newLine.SteamPwd, newLine.Jid)
+	debug := 0
+	if newLine.Debug {
+		debug = 1
+	}
+	_, err = stmt.Exec(newLine.SteamLogin, newLine.SteamPwd, debug, newLine.Jid)
 	if err != nil {
 		log.Printf("%sError on updating SQL statement", LogError, err)
 		return false
@@ -141,11 +150,16 @@ func getLine(jid string) *DatabaseLine {
 		return nil
 	}
 	defer stmt.Close()
-
-	err = stmt.QueryRow(jid).Scan(&ret.Jid, &ret.SteamLogin, &ret.SteamPwd)
+	debug := 0
+	err = stmt.QueryRow(jid).Scan(&ret.Jid, &ret.SteamLogin, &ret.SteamPwd, &debug)
 	if err != nil {
 		log.Printf("%sError on select scan", LogError, err)
 		return nil
+	}
+	if debug == 1 {
+		ret.Debug = true
+	} else {
+		ret.Debug = false
 	}
 
 	return ret

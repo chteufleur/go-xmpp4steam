@@ -24,6 +24,7 @@ type GatewayInfo struct {
 	XMPP_JID_Client       string
 	XMPP_Out              chan interface{}
 	XMPP_Connected_Client map[string]bool
+	DebugMessage          bool
 }
 
 type StatusSteamFriend struct {

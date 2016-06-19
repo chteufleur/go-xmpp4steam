@@ -41,7 +41,7 @@ func init() {
 func main() {
 	allDbUsers := database.GetAllLines()
 	for _, dbUser := range allDbUsers {
-		xmpp.AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd)
+		xmpp.AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd, dbUser.Debug)
 	}
 	go xmpp.Run()
 

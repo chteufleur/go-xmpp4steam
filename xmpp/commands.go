@@ -13,6 +13,7 @@ const (
 	CommandGetIdentifiants    = "steamGetIdentifiants"
 	CommandDisconnectSteam    = "disconnectSteam"
 	CommandRemoveRegistration = "removeRegistration"
+	CommandToggleDebugMode    = "toggleDebugMode"
 )
 
 var (
@@ -32,6 +33,8 @@ func execDiscoCommand(iq *xmpp.Iq) {
 	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
 	discoItem.Item = append(discoItem.Item, *discoI)
 	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
+	discoItem.Item = append(discoItem.Item, *discoI)
+	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
 	discoItem.Item = append(discoItem.Item, *discoI)
 
 	reply.PayloadEncode(discoItem)
@@ -97,6 +100,29 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			}
 
 			cmd.Note = *note
+		} else if adHoc.Node == CommandToggleDebugMode {
+			cmd.Status = xmpp.StatusAdHocCompleted
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Toggle debug mode"}
+			cmd.XForm = *cmdXForm
+			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
+
+			jidBare := strings.SplitN(iq.From, "/", 2)[0]
+			dbUser := database.GetLine(jidBare)
+			dbUser.Debug = !dbUser.Debug
+			g := MapGatewayInfo[jidBare]
+			ok := dbUser.UpdateLine()
+			if ok && g != nil {
+				g.DebugMessage = dbUser.Debug
+				if dbUser.Debug {
+					note.Value = "Debug activated."
+				} else {
+					note.Value = "Debug desactivated."
+				}
+			} else {
+				note.Value = "Failed to update your profile. :("
+			}
+
+			cmd.Note = *note
 		}
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
@@ -159,6 +185,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 				dbUser.Jid = jidBare
 				dbUser.SteamLogin = steamLogin
 				dbUser.SteamPwd = steamPwd
+				dbUser.Debug = false
 
 				isUserRegistred := database.GetLine(dbUser.Jid) != nil
 				var isSqlSuccess bool
@@ -168,7 +195,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 					isSqlSuccess = dbUser.AddLine()
 				}
 				if isSqlSuccess {
-					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd)
+					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd, dbUser.Debug)
 					note.Value = "Command succeded !"
 				} else {
 					note.Value = "Error append while executing command"
