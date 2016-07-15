@@ -30,4 +30,4 @@ After giving the code to the gateway, send again a presence to it and it should 
 
 
 ## Help
-To get any help, please visit the XMPP conference room at [go-xmpp4steam@muc.kingpenguin.tk](xmpp:go-xmpp4steam@muc.kingpenguin.tk?join) with your prefered client, or [with your browser](https://jappix.kingpenguin.tk/?r=go-xmpp4steam@muc.kingpenguin.tk).
+To get any help, please visit the XMPP conference room at [go-xmpp4steam@muc.kingpenguin.tk](xmpp://go-xmpp4steam@muc.kingpenguin.tk?join) with your prefered client, or [with your browser](https://jappix.kingpenguin.tk/?r=go-xmpp4steam@muc.kingpenguin.tk).
