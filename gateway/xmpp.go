@@ -2,7 +2,7 @@ package gateway
 
 import (
 	"git.kingpenguin.tk/chteufleur/go-xmpp.git/src/xmpp"
-	"github.com/Philipp15b/go-steam/internal/steamlang"
+	"github.com/Philipp15b/go-steam/protocol/steamlang"
 
 	"log"
 	"strings"
