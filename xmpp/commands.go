@@ -126,7 +126,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 		}
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
-	} else if adHoc.Action == xmpp.ActionAdHocExecute {
+	} else if adHoc.Action == xmpp.ActionAdHocExecute || adHoc.Action == xmpp.ActionAdHocNext {
 		// Last step in the command
 		log.Printf("%sAd-Hoc command (Node : %s). Last step.", LogInfo, adHoc.Node)
 		reply := iq.Response(xmpp.IQTypeResult)
