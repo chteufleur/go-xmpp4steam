@@ -25,17 +25,24 @@ func execDiscoCommand(iq *xmpp.Iq) {
 	reply := iq.Response(xmpp.IQTypeResult)
 	discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
 
+	jidBare := strings.SplitN(iq.From, "/", 2)[0]
+	dbUser := database.GetLine(jidBare)
+
 	// Add available commands
-	discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
-	discoItem.Item = append(discoItem.Item, *discoI)
-	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
-	discoItem.Item = append(discoItem.Item, *discoI)
-	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
-	discoItem.Item = append(discoItem.Item, *discoI)
-	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
-	discoItem.Item = append(discoItem.Item, *discoI)
-	discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
-	discoItem.Item = append(discoItem.Item, *discoI)
+	if dbUser == nil {
+		discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
+		discoItem.Item = append(discoItem.Item, *discoI)
+	} else {
+		// Add only if user is registered
+		discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
+		discoItem.Item = append(discoItem.Item, *discoI)
+		discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
+		discoItem.Item = append(discoItem.Item, *discoI)
+		discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
+		discoItem.Item = append(discoItem.Item, *discoI)
+		discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
+		discoItem.Item = append(discoItem.Item, *discoI)
+	}
 
 	reply.PayloadEncode(discoItem)
 	comp.Out <- reply
