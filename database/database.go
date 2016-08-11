@@ -132,7 +132,7 @@ func RemoveLine(jid string) bool {
 func GetLine(jid string) *DatabaseLine {
 	ret := getLine(jid)
 
-	if ret.SteamLogin == "" {
+	if ret == nil || ret.SteamLogin == "" {
 		log.Printf("%sLine empty", LogDebug)
 		return nil
 	}

@@ -108,18 +108,22 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 
 			jidBare := strings.SplitN(iq.From, "/", 2)[0]
 			dbUser := database.GetLine(jidBare)
-			dbUser.Debug = !dbUser.Debug
-			g := MapGatewayInfo[jidBare]
-			ok := dbUser.UpdateLine()
-			if ok && g != nil {
-				g.DebugMessage = dbUser.Debug
-				if dbUser.Debug {
-					note.Value = "Debug activated."
+			if dbUser != nil {
+				dbUser.Debug = !dbUser.Debug
+				g := MapGatewayInfo[jidBare]
+				ok := dbUser.UpdateLine()
+				if ok && g != nil {
+					g.DebugMessage = dbUser.Debug
+					if dbUser.Debug {
+						note.Value = "Debug activated."
+					} else {
+						note.Value = "Debug desactivated."
+					}
 				} else {
-					note.Value = "Debug desactivated."
+					note.Value = "Failed to update your profile. :("
 				}
 			} else {
-				note.Value = "Failed to update your profile. :("
+				note.Value = "Your not registered."
 			}
 
 			cmd.Note = *note
