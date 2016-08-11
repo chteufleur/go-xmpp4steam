@@ -66,7 +66,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 
 			field := &xmpp.AdHocField{Var: "login", Label: "Steam Login", Type: xmpp.TypeAdHocFieldTextSingle}
 			cmdXForm.Fields = append(cmdXForm.Fields, *field)
-			field = &xmpp.AdHocField{Var: "password", Label: "Steam Password", Type: xmpp.TypeAdHocFieldTextSingle}
+			field = &xmpp.AdHocField{Var: "password", Label: "Steam Password", Type: xmpp.TypeAdHocFieldTextPrivate}
 			cmdXForm.Fields = append(cmdXForm.Fields, *field)
 
 			cmd.XForm = *cmdXForm
