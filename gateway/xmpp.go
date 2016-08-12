@@ -124,7 +124,7 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 
 func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 	steamID := strings.SplitN(message.To, "@", 2)[0]
-	g.SendSteamMessage(steamID, message.Subject+"\n"+message.Body)
+	g.SendSteamMessage(steamID, message.Body)
 }
 
 func (g *GatewayInfo) XMPP_Disconnect() {
