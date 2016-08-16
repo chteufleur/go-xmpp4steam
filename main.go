@@ -36,6 +36,8 @@ func init() {
 	xmpp.Secret = mapConfig["xmpp_secret"]
 	xmpp.Debug = mapConfig["xmpp_debug"] == "true"
 	gateway.XmppJidComponent = xmpp.JidStr
+
+	os.MkdirAll(gateway.SentryDirectory, 0700)
 }
 
 func main() {
