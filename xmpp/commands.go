@@ -18,33 +18,57 @@ const (
 
 var (
 	ChanAuthCode = make(chan string)
+	identity = &xmpp.DiscoIdentity{Category: "gateway", Type: "steam", Name: "Steam Gateway"}
 )
 
 func execDiscoCommand(iq *xmpp.Iq) {
 	log.Printf("%sDiscovery item iq received", LogInfo)
-	reply := iq.Response(xmpp.IQTypeResult)
-	discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
 
-	jidBare := strings.SplitN(iq.From, "/", 2)[0]
-	dbUser := database.GetLine(jidBare)
+	discoInfo := &xmpp.DiscoItems{}
+	iq.PayloadDecode(discoInfo)
+	if discoInfo.Node == "" {
+		// Disco feature
+		execDisco(iq)
+		return
+	} else if discoInfo.Node == xmpp.NodeAdHocCommand {
+		// Disco Ad-Hoc
+		reply := iq.Response(xmpp.IQTypeResult)
+		discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
 
-	// Add available commands
-	if dbUser == nil {
-		discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
-		discoItem.Item = append(discoItem.Item, *discoI)
-	} else {
-		// Add only if user is registered
-		discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
-		discoItem.Item = append(discoItem.Item, *discoI)
-		discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
-		discoItem.Item = append(discoItem.Item, *discoI)
-		discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
-		discoItem.Item = append(discoItem.Item, *discoI)
-		discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
-		discoItem.Item = append(discoItem.Item, *discoI)
+		jidBare := strings.SplitN(iq.From, "/", 2)[0]
+		dbUser := database.GetLine(jidBare)
+
+		// Add available commands
+		if dbUser == nil {
+			discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
+			discoItem.Item = append(discoItem.Item, *discoI)
+			} else {
+				// Add only if user is registered
+				discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
+				discoItem.Item = append(discoItem.Item, *discoI)
+				discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
+				discoItem.Item = append(discoItem.Item, *discoI)
+				discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
+				discoItem.Item = append(discoItem.Item, *discoI)
+				discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
+				discoItem.Item = append(discoItem.Item, *discoI)
+			}
+
+			reply.PayloadEncode(discoItem)
+			comp.Out <- reply
 	}
+}
 
-	reply.PayloadEncode(discoItem)
+func execDisco(iq *xmpp.Iq) {
+	log.Printf("%sDisco Feature", LogInfo)
+	reply := iq.Response(xmpp.IQTypeResult)
+
+	discoInfo := &xmpp.DiscoInfo{}
+	discoInfo.Identity = append(discoInfo.Identity, *identity)
+	discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSJabberClient})
+	discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NodeAdHocCommand})
+
+	reply.PayloadEncode(discoInfo)
 	comp.Out <- reply
 }
 
