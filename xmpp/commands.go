@@ -18,7 +18,7 @@ const (
 
 var (
 	ChanAuthCode = make(chan string)
-	identity = &xmpp.DiscoIdentity{Category: "gateway", Type: "steam", Name: "Steam Gateway"}
+	identity     = &xmpp.DiscoIdentity{Category: "gateway", Type: "steam", Name: "Steam Gateway"}
 )
 
 func execDiscoCommand(iq *xmpp.Iq) {
@@ -42,20 +42,20 @@ func execDiscoCommand(iq *xmpp.Iq) {
 		if dbUser == nil {
 			discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
 			discoItem.Item = append(discoItem.Item, *discoI)
-			} else {
-				// Add only if user is registered
-				discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
-				discoItem.Item = append(discoItem.Item, *discoI)
-				discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
-				discoItem.Item = append(discoItem.Item, *discoI)
-				discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
-				discoItem.Item = append(discoItem.Item, *discoI)
-				discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
-				discoItem.Item = append(discoItem.Item, *discoI)
-			}
+		} else {
+			// Add only if user is registered
+			discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandAuthcode, Name: "Add Steam Auth Code"}
+			discoItem.Item = append(discoItem.Item, *discoI)
+			discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandDisconnectSteam, Name: "Force Steam deconnexion"}
+			discoItem.Item = append(discoItem.Item, *discoI)
+			discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandRemoveRegistration, Name: "Remove registration"}
+			discoItem.Item = append(discoItem.Item, *discoI)
+			discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
+			discoItem.Item = append(discoItem.Item, *discoI)
+		}
 
-			reply.PayloadEncode(discoItem)
-			comp.Out <- reply
+		reply.PayloadEncode(discoItem)
+		comp.Out <- reply
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/Philipp15b/go-steam/steamid"
 
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"strconv"
@@ -89,7 +90,7 @@ func (g *GatewayInfo) mainSteam() {
 			if _, ok := g.SteamClient.Social.Friends.GetCopy()[e.FriendId]; !ok {
 				// Is not in friend list
 				// Exepte for myself
-				if (g.SteamClient.SteamId() != e.FriendId) {
+				if g.SteamClient.SteamId() != e.FriendId {
 					continue
 				}
 			}
@@ -131,6 +132,13 @@ func (g *GatewayInfo) mainSteam() {
 		case *steam.ChatMsgEvent:
 			// Message received
 			g.SendXmppMessage(e.ChatterId.ToString()+"@"+XmppJidComponent, "", e.Message)
+
+		case *steam.ChatInviteEvent:
+			// Invitation to play
+			if fromFriend, ok := g.SteamClient.Social.Friends.GetCopy()[e.FriendChatId]; ok {
+				messageToSend := fmt.Sprintf("Currently playing to « %s », would you like to join ?", fromFriend.GameName)
+				g.SendXmppMessage(e.FriendChatId.ToString()+"@"+XmppJidComponent, "", messageToSend)
+			}
 
 		default:
 			log.Printf("%s", LogSteamDebug, e)
