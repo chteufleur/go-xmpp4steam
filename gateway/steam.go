@@ -86,6 +86,13 @@ func (g *GatewayInfo) mainSteam() {
 
 		case *steam.PersonaStateEvent:
 			// Presenc received
+			if _, ok := g.SteamClient.Social.Friends.GetCopy()[e.FriendId]; !ok {
+				// Is not in friend list
+				// Exepte for myself
+				if (g.SteamClient.SteamId() != e.FriendId) {
+					continue
+				}
+			}
 			steamId := e.FriendId.ToString()
 			name := e.Name
 			gameName := e.GameName
