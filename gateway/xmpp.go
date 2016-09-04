@@ -132,7 +132,7 @@ func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 	} else if message.Inactive != nil {
 		return
 	} else if message.Gone != nil {
-		return
+		g.SendSteamMessageLeaveConversation(steamID)
 	} else {
 		if message.Body != "" {
 			g.SendSteamMessage(steamID, message.Body)
@@ -178,10 +178,17 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, to, from, message, nick str
 func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
 	g.sendXmppMessage(from, subject, message, &xmpp.Active{})
 	g.stopComposingTimer(from)
+
+	// Make inactive after 2 min if nothing happen
+	t := time.AfterFunc(120*time.Second, func() {
+		g.sendXmppMessage(from, "", "", &xmpp.Inactive{})
+	})
+	g.XMPP_Composing_Timers[from] = t
 }
 
 func (g *GatewayInfo) SendXmppMessageLeaveConversation(from string) {
 	g.sendXmppMessage(from, "", "", &xmpp.Gone{})
+	g.stopComposingTimer(from)
 }
 
 func (g *GatewayInfo) SendXmppMessageComposing(from string) {

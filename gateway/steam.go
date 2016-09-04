@@ -233,6 +233,10 @@ func (g *GatewayInfo) SendSteamMessageComposing(steamId string) {
 	g.sendSteamMessage(steamId, "", steamlang.EChatEntryType_Typing)
 }
 
+func (g *GatewayInfo) SendSteamMessageLeaveConversation(steamId string) {
+	g.sendSteamMessage(steamId, "", steamlang.EChatEntryType_LeftConversation)
+}
+
 func (g *GatewayInfo) sendSteamMessage(steamId, message string, chatEntryType steamlang.EChatEntryType) {
 	if !g.IsSteamConnected() {
 		log.Printf("%sTry to send message, but disconnected", LogSteamDebug)
