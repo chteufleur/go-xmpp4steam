@@ -131,10 +131,13 @@ func (g *GatewayInfo) mainSteam() {
 
 		case *steam.ChatMsgEvent:
 			// Message received
+			from := e.ChatterId.ToString() + "@" + XmppJidComponent
 			if e.EntryType == steamlang.EChatEntryType_Typing {
-				g.SendXmppMessageComposing(e.ChatterId.ToString() + "@" + XmppJidComponent)
+				g.SendXmppMessageComposing(from)
+			} else if e.EntryType == steamlang.EChatEntryType_LeftConversation {
+				g.SendXmppMessageLeaveConversation(from)
 			} else {
-				g.SendXmppMessage(e.ChatterId.ToString()+"@"+XmppJidComponent, "", e.Message)
+				g.SendXmppMessage(from, "", e.Message)
 			}
 
 		case *steam.ChatInviteEvent:

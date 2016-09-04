@@ -180,6 +180,10 @@ func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
 	g.stopComposingTimer(from)
 }
 
+func (g *GatewayInfo) SendXmppMessageLeaveConversation(from string) {
+	g.sendXmppMessage(from, "", "", &xmpp.Gone{})
+}
+
 func (g *GatewayInfo) SendXmppMessageComposing(from string) {
 	g.sendXmppMessage(from, "", "", &xmpp.Composing{})
 	g.stopComposingTimer(from)
