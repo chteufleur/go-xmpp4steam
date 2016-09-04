@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"github.com/Philipp15b/go-steam"
+	"time"
 )
 
 const (
@@ -24,6 +25,7 @@ type GatewayInfo struct {
 	XMPP_JID_Client       string
 	XMPP_Out              chan interface{}
 	XMPP_Connected_Client map[string]bool
+	XMPP_Composing_Timers map[string]*time.Timer
 	DebugMessage          bool
 }
 

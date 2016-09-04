@@ -7,6 +7,7 @@ import (
 
 	"log"
 	"strings"
+	"time"
 )
 
 const (
@@ -202,6 +203,7 @@ func AddNewUser(jid, steamLogin, steamPwd string, debugMessage bool) {
 
 	g.XMPP_Out = comp.Out
 	g.XMPP_Connected_Client = make(map[string]bool)
+	g.XMPP_Composing_Timers = make(map[string]*time.Timer)
 	g.DebugMessage = debugMessage
 
 	MapGatewayInfo[jid] = g

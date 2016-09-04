@@ -131,7 +131,11 @@ func (g *GatewayInfo) mainSteam() {
 
 		case *steam.ChatMsgEvent:
 			// Message received
-			g.SendXmppMessage(e.ChatterId.ToString()+"@"+XmppJidComponent, "", e.Message)
+			if e.EntryType == steamlang.EChatEntryType_Typing {
+				g.SendXmppMessageComposing(e.ChatterId.ToString() + "@" + XmppJidComponent)
+			} else {
+				g.SendXmppMessage(e.ChatterId.ToString()+"@"+XmppJidComponent, "", e.Message)
+			}
 
 		case *steam.ChatInviteEvent:
 			// Invitation to play
@@ -219,6 +223,14 @@ func (g *GatewayInfo) DisconnectAllSteamFriend() {
 }
 
 func (g *GatewayInfo) SendSteamMessage(steamId, message string) {
+	g.sendSteamMessage(steamId, message, steamlang.EChatEntryType_ChatMsg)
+}
+
+func (g *GatewayInfo) SendSteamMessageComposing(steamId string) {
+	g.sendSteamMessage(steamId, "", steamlang.EChatEntryType_Typing)
+}
+
+func (g *GatewayInfo) sendSteamMessage(steamId, message string, chatEntryType steamlang.EChatEntryType) {
 	if !g.IsSteamConnected() {
 		log.Printf("%sTry to send message, but disconnected", LogSteamDebug)
 		return
@@ -226,7 +238,7 @@ func (g *GatewayInfo) SendSteamMessage(steamId, message string) {
 
 	steamIdUint64, err := strconv.ParseUint(steamId, 10, 64)
 	if err == nil {
-		g.SteamClient.Social.SendMessage(steamid.SteamId(steamIdUint64), steamlang.EChatEntryType_ChatMsg, message)
+		g.SteamClient.Social.SendMessage(steamid.SteamId(steamIdUint64), chatEntryType, message)
 	} else {
 		log.Printf("%sFailed to get SteamId from %s", LogSteamError, steamId)
 	}

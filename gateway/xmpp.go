@@ -6,6 +6,7 @@ import (
 
 	"log"
 	"strings"
+	"time"
 )
 
 const (
@@ -124,7 +125,19 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 
 func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 	steamID := strings.SplitN(message.To, "@", 2)[0]
-	g.SendSteamMessage(steamID, message.Body)
+	if message.Composing != nil {
+		g.SendSteamMessageComposing(steamID)
+	} else if message.Paused != nil {
+		return
+	} else if message.Inactive != nil {
+		return
+	} else if message.Gone != nil {
+		return
+	} else {
+		if message.Body != "" {
+			g.SendSteamMessage(steamID, message.Body)
+		}
+	}
 }
 
 func (g *GatewayInfo) XMPP_Disconnect() {
@@ -163,11 +176,57 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, to, from, message, nick str
 }
 
 func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
+	g.sendXmppMessage(from, subject, message, &xmpp.Active{})
+	g.stopComposingTimer(from)
+}
+
+func (g *GatewayInfo) SendXmppMessageComposing(from string) {
+	g.sendXmppMessage(from, "", "", &xmpp.Composing{})
+	g.stopComposingTimer(from)
+
+	timer := time.AfterFunc(20*time.Second, func() {
+		g.sendXmppMessage(from, "", "", &xmpp.Paused{})
+
+		t := time.AfterFunc(100*time.Second, func() {
+			g.sendXmppMessage(from, "", "", &xmpp.Inactive{})
+		})
+		g.XMPP_Composing_Timers[from] = t
+	})
+	g.XMPP_Composing_Timers[from] = timer
+}
+
+func (g *GatewayInfo) stopComposingTimer(from string) {
+	if t, ok := g.XMPP_Composing_Timers[from]; ok {
+		// Delete previous timer if exist
+		if !t.Stop() {
+			// Prevent firing after stop
+			<-t.C
+		}
+		delete(g.XMPP_Composing_Timers, from)
+	}
+}
+
+func (g *GatewayInfo) sendXmppMessage(from, subject, message string, chatState interface{}) {
 	if from != XmppJidComponent || from == XmppJidComponent && g.DebugMessage {
 		m := xmpp.Message{To: g.XMPP_JID_Client, From: from, Body: message, Type: "chat"}
 
 		if subject != "" {
 			m.Subject = subject
+		}
+
+		switch v := chatState.(type) {
+		case *xmpp.Active:
+			m.Active = v
+		case *xmpp.Composing:
+			m.Composing = v
+		case *xmpp.Paused:
+			m.Paused = v
+		case *xmpp.Inactive:
+			m.Inactive = v
+		case *xmpp.Gone:
+			m.Gone = v
+		default:
+			m.Active = &xmpp.Active{}
 		}
 
 		log.Printf("%sSend message %v", LogXmppInfo, m)
