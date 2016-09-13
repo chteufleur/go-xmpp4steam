@@ -59,10 +59,10 @@ func mainXMPP() {
 	for x := range comp.In {
 		switch v := x.(type) {
 		case *xmpp.Presence:
-			jidBare := strings.SplitN(v.From, "/", 2)[0]
-			g := MapGatewayInfo[jidBare]
+			jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
+			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
-				log.Printf("%sPresence transfered to %s", LogDebug, jidBare)
+				log.Printf("%sPresence transfered to %s", LogDebug, jidBareFrom)
 				g.ReceivedXMPP_Presence(v)
 			} else {
 				if v.Type != gateway.Type_error && v.Type != gateway.Type_probe {
@@ -71,37 +71,27 @@ func mainXMPP() {
 			}
 
 		case *xmpp.Message:
-			jidBare := strings.SplitN(v.From, "/", 2)[0]
-			g := MapGatewayInfo[jidBare]
+			jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
+			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
-				log.Printf("%sMessage transfered to %s", LogDebug, jidBare)
+				log.Printf("%sMessage transfered to %s", LogDebug, jidBareFrom)
 				g.ReceivedXMPP_Message(v)
 			} else {
 				SendMessage(v.From, "", "Your are not registred. If you want to register, please, send an Ad-Hoc command.")
 			}
 
 		case *xmpp.Iq:
-			jidBare := strings.SplitN(v.To, "/", 2)[0]
+			jidBareTo := strings.SplitN(v.To, "/", 2)[0]
 
 			switch v.PayloadName().Space {
-			case xmpp.NSDiscoItems:
-				if jidBare == jid.Domain {
-					execDiscoCommand(v)
-				} else {
-					sendNotSupportedFeature(v)
-				}
 			case xmpp.NSDiscoInfo:
 				execDisco(v)
 
-			case xmpp.NodeAdHocCommand:
-				if jidBare == jid.Domain {
-					execCommandAdHoc(v)
-				} else {
-					sendNotSupportedFeature(v)
-				}
+			case xmpp.NSDiscoItems:
+				execDisco(v)
 
 			case xmpp.NSVCardTemp:
-				if jidBare == jid.Domain {
+				if jidBareTo == jid.Domain {
 					reply := v.Response(xmpp.IQTypeResult)
 					vcard := &xmpp.VCard{}
 					reply.PayloadEncode(vcard)
@@ -111,7 +101,7 @@ func mainXMPP() {
 				}
 
 			case xmpp.NSJabberClient:
-				if jidBare == jid.Domain {
+				if jidBareTo == jid.Domain {
 					reply := v.Response(xmpp.IQTypeResult)
 					reply.PayloadEncode(&xmpp.SoftwareVersion{Name: "go-xmpp4steam", Version: SoftVersion})
 					comp.Out <- reply

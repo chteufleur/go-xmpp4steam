@@ -17,27 +17,24 @@ const (
 )
 
 var (
-	ChanAuthCode = make(chan string)
-	identity     = &xmpp.DiscoIdentity{Category: "gateway", Type: "steam", Name: "Steam Gateway"}
+	ChanAuthCode    = make(chan string)
+	identityGateway = &xmpp.DiscoIdentity{Category: "gateway", Type: "steam", Name: "Steam Gateway"}
+	identityClients = &xmpp.DiscoIdentity{Category: "client", Type: "pc", Name: "Steam client"}
 )
 
 func execDiscoCommand(iq *xmpp.Iq) {
-	log.Printf("%sDiscovery item iq received", LogInfo)
+	log.Printf("%sAd-Hoc Command", LogInfo)
 
-	discoInfo := &xmpp.DiscoItems{}
-	iq.PayloadDecode(discoInfo)
-	if discoInfo.Node == "" {
-		// Disco feature
-		execDisco(iq)
-		return
-	} else if discoInfo.Node == xmpp.NodeAdHocCommand {
-		// Disco Ad-Hoc
-		reply := iq.Response(xmpp.IQTypeResult)
-		discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
+	// Disco Ad-Hoc
+	reply := iq.Response(xmpp.IQTypeResult)
+	discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
 
-		jidBare := strings.SplitN(iq.From, "/", 2)[0]
-		dbUser := database.GetLine(jidBare)
+	jidBareFrom := strings.SplitN(iq.From, "/", 2)[0]
+	jidBareTo   := strings.SplitN(iq.To, "/", 2)[0]
+	dbUser := database.GetLine(jidBareFrom)
 
+	if jidBareTo == jid.Domain {
+		// Ad-Hoc command only on gateway
 		// Add available commands
 		if dbUser == nil {
 			discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandGetIdentifiants, Name: "Steam registration"}
@@ -53,23 +50,48 @@ func execDiscoCommand(iq *xmpp.Iq) {
 			discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
 			discoItem.Item = append(discoItem.Item, *discoI)
 		}
-
-		reply.PayloadEncode(discoItem)
-		comp.Out <- reply
 	}
+
+	reply.PayloadEncode(discoItem)
+	comp.Out <- reply
 }
 
 func execDisco(iq *xmpp.Iq) {
 	log.Printf("%sDisco Feature", LogInfo)
-	reply := iq.Response(xmpp.IQTypeResult)
+	jidBareTo := strings.SplitN(iq.To, "/", 2)[0]
 
-	discoInfo := &xmpp.DiscoInfo{}
-	discoInfo.Identity = append(discoInfo.Identity, *identity)
-	discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSJabberClient})
-	discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NodeAdHocCommand})
+	discoInfoReceived := &xmpp.DiscoItems{}
+	iq.PayloadDecode(discoInfoReceived)
 
-	reply.PayloadEncode(discoInfo)
-	comp.Out <- reply
+	switch iq.PayloadName().Space {
+	case xmpp.NSDiscoInfo:
+		reply := iq.Response(xmpp.IQTypeResult)
+
+		discoInfo := &xmpp.DiscoInfo{}
+		if jidBareTo == jid.Domain {
+			discoInfo.Identity = append(discoInfo.Identity, *identityGateway)
+			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NodeAdHocCommand})
+		} else {
+			discoInfo.Identity = append(discoInfo.Identity, *identityClients)
+			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSChatStatesNotification})
+		}
+		discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSDiscoInfo})
+		discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSDiscoItems})
+
+		reply.PayloadEncode(discoInfo)
+		comp.Out <- reply
+
+	case xmpp.NSDiscoItems:
+		if discoInfoReceived.Node == xmpp.NodeAdHocCommand {
+			// Ad-Hoc command
+			execDiscoCommand(iq)
+		} else {
+			reply := iq.Response(xmpp.IQTypeResult)
+			discoItems := &xmpp.DiscoItems{}
+			reply.PayloadEncode(discoItems)
+			comp.Out <- reply
+		}
+	}
 }
 
 func execCommandAdHoc(iq *xmpp.Iq) {
