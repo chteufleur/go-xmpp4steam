@@ -90,6 +90,13 @@ func mainXMPP() {
 			case xmpp.NSDiscoItems:
 				execDisco(v)
 
+			case xmpp.NodeAdHocCommand:
+				if jidBare == jid.Domain {
+					execCommandAdHoc(v)
+				} else {
+					sendNotSupportedFeature(v)
+				}
+
 			case xmpp.NSVCardTemp:
 				if jidBareTo == jid.Domain {
 					reply := v.Response(xmpp.IQTypeResult)
