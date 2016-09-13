@@ -91,7 +91,7 @@ func mainXMPP() {
 				execDisco(v)
 
 			case xmpp.NodeAdHocCommand:
-				if jidBare == jid.Domain {
+				if jidBareTo == jid.Domain {
 					execCommandAdHoc(v)
 				} else {
 					sendNotSupportedFeature(v)
