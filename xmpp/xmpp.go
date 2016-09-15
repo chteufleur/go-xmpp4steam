@@ -134,7 +134,7 @@ func mainXMPP() {
 						} else {
 							registerQuery.XForm = *getXFormRegistration("")
 						}
-						reply.PayloadEncode(cmd)
+						reply.PayloadEncode(registerQuery)
 
 					} else if v.Type == xmpp.IQTypeSet {
 						v.PayloadDecode(registerQuery)
