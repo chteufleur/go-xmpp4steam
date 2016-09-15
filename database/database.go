@@ -87,6 +87,10 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 	if newLine.Debug {
 		debug = 1
 	}
+	if newLine.SteamPwd == "" {
+		oldLine := GetLine(newLine.Jid)
+		newLine.SteamPwd = oldLine.SteamPwd
+	}
 	_, err = stmt.Exec(newLine.SteamLogin, newLine.SteamPwd, debug, newLine.Jid)
 	if err != nil {
 		log.Printf("%sError on updating SQL statement", LogError, err)
@@ -94,6 +98,17 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 	}
 
 	return true
+}
+
+func (dbUser *DatabaseLine) UpdateUser() bool {
+	isUserRegistred := GetLine(dbUser.Jid) != nil
+	var isSqlSuccess bool
+	if isUserRegistred {
+		isSqlSuccess = dbUser.UpdateLine()
+	} else {
+		isSqlSuccess = dbUser.AddLine()
+	}
+	return isSqlSuccess
 }
 
 func RemoveLine(jid string) bool {

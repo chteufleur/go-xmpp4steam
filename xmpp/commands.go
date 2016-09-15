@@ -30,7 +30,7 @@ func execDiscoCommand(iq *xmpp.Iq) {
 	discoItem := &xmpp.DiscoItems{Node: xmpp.NodeAdHocCommand}
 
 	jidBareFrom := strings.SplitN(iq.From, "/", 2)[0]
-	jidBareTo   := strings.SplitN(iq.To, "/", 2)[0]
+	jidBareTo := strings.SplitN(iq.To, "/", 2)[0]
 	dbUser := database.GetLine(jidBareFrom)
 
 	if jidBareTo == jid.Domain {
@@ -71,6 +71,8 @@ func execDisco(iq *xmpp.Iq) {
 		if jidBareTo == jid.Domain {
 			discoInfo.Identity = append(discoInfo.Identity, *identityGateway)
 			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NodeAdHocCommand})
+			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSJabberClient})
+			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSRegister})
 		} else {
 			discoInfo.Identity = append(discoInfo.Identity, *identityClients)
 			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSChatStatesNotification})
@@ -114,16 +116,9 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 
 		} else if adHoc.Node == CommandGetIdentifiants {
 			// Command Auth Code
-			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocForm, Title: "Steam Account Info", Instructions: "Please provide your Steam login and password."}
-			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo, Value: "Please, be aware that the given Steam account information will be saved into an un-encrypted SQLite database."}
-
-			field := &xmpp.AdHocField{Var: "login", Label: "Steam Login", Type: xmpp.TypeAdHocFieldTextSingle}
-			cmdXForm.Fields = append(cmdXForm.Fields, *field)
-			field = &xmpp.AdHocField{Var: "password", Label: "Steam Password", Type: xmpp.TypeAdHocFieldTextPrivate}
-			cmdXForm.Fields = append(cmdXForm.Fields, *field)
-
+			cmdXForm := getXFormRegistration("")
 			cmd.XForm = *cmdXForm
-			cmd.Note = *note
+
 		} else if adHoc.Node == CommandDisconnectSteam {
 			cmd.Status = xmpp.StatusAdHocCompleted
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Force Steam deconnexion"}
@@ -225,33 +220,9 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
 
 			// Command Auth Code
-			steamLogin := ""
-			steamPwd := ""
-			fields := adHoc.XForm.Fields
-			for _, field := range fields {
-				if field.Var == "login" {
-					steamLogin = field.Value
-				} else if field.Var == "password" {
-					steamPwd = field.Value
-				}
-			}
-			if steamLogin != "" && steamPwd != "" {
-				// Succeded
-				jidBare := strings.SplitN(iq.From, "/", 2)[0]
-				dbUser := new(database.DatabaseLine)
-				dbUser.Jid = jidBare
-				dbUser.SteamLogin = steamLogin
-				dbUser.SteamPwd = steamPwd
-				dbUser.Debug = false
-
-				isUserRegistred := database.GetLine(dbUser.Jid) != nil
-				var isSqlSuccess bool
-				if isUserRegistred {
-					isSqlSuccess = dbUser.UpdateLine()
-				} else {
-					isSqlSuccess = dbUser.AddLine()
-				}
-				if isSqlSuccess {
+			dbUser := getUser(adHoc.XForm.Fields, iq)
+			if dbUser != nil {
+				if dbUser.UpdateUser() {
 					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd, dbUser.Debug)
 					note.Value = "Command succeded !"
 				} else {
@@ -273,5 +244,43 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCanceled, SessionID: adHoc.SessionID}
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
+	}
+}
+
+func getXFormRegistration(steamLogin string) *xmpp.AdHocXForm {
+	cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocForm, Title: "Steam Account Info", Instructions: "Please provide your Steam login and password (Please, be aware that the given Steam account information will be saved into an un-encrypted SQLite database)."}
+
+	field := &xmpp.AdHocField{Var: "login", Label: "Steam Login", Type: xmpp.TypeAdHocFieldTextSingle}
+	field.Value = steamLogin
+	cmdXForm.Fields = append(cmdXForm.Fields, *field)
+	field = &xmpp.AdHocField{Var: "password", Label: "Steam Password", Type: xmpp.TypeAdHocFieldTextPrivate}
+	cmdXForm.Fields = append(cmdXForm.Fields, *field)
+
+	return cmdXForm
+}
+
+func getUser(fields []xmpp.AdHocField, iq *xmpp.Iq) *database.DatabaseLine {
+	// Command Auth Code
+	steamLogin := ""
+	steamPwd := ""
+	for _, field := range fields {
+		if field.Var == "login" {
+			steamLogin = field.Value
+		} else if field.Var == "password" {
+			steamPwd = field.Value
+		}
+	}
+	if steamLogin != "" {
+		// Succeded
+		jidBare := strings.SplitN(iq.From, "/", 2)[0]
+		dbUser := new(database.DatabaseLine)
+		dbUser.Jid = jidBare
+		dbUser.SteamLogin = steamLogin
+		dbUser.SteamPwd = steamPwd
+		dbUser.Debug = false
+
+		return dbUser
+	} else {
+		return nil
 	}
 }

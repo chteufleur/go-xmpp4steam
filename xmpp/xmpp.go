@@ -116,6 +116,51 @@ func mainXMPP() {
 					sendNotSupportedFeature(v)
 				}
 
+			case xmpp.NSRegister:
+				if jidBareTo == jid.Domain {
+					reply := v.Response(xmpp.IQTypeResult)
+					jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
+					registerQuery := &xmpp.RegisterQuery{}
+
+					if v.Type == xmpp.IQTypeGet {
+						registerQuery.Instructions = "Please provide your Steam login and password (Please, be aware that the given Steam account information will be saved into an un-encrypted SQLite database)."
+
+						dbUser := database.GetLine(jidBareFrom)
+						if dbUser != nil {
+							// User already registered
+							registerQuery.Registered = &xmpp.RegisterRegistered{}
+							registerQuery.Username = dbUser.SteamLogin
+							registerQuery.XForm = *getXFormRegistration(dbUser.SteamLogin)
+						} else {
+							registerQuery.XForm = *getXFormRegistration("")
+						}
+						reply.PayloadEncode(cmd)
+
+					} else if v.Type == xmpp.IQTypeSet {
+						v.PayloadDecode(registerQuery)
+
+						if registerQuery.Remove != nil {
+							RemoveUser(jidBareFrom)
+						} else {
+							dbUser := getUser(registerQuery.XForm.Fields, v)
+							if dbUser != nil {
+								if dbUser.UpdateUser() {
+									AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd, dbUser.Debug)
+								} else {
+									reply.Type = xmpp.IQTypeError
+									reply.Error = xmpp.NewErrorWithCode("406", "modify", xmpp.ErrorNotAcceptable, "")
+								}
+							} else {
+								reply.Type = xmpp.IQTypeError
+								reply.Error = xmpp.NewErrorWithCode("409", "cancel", xmpp.ErrorConflict, "")
+							}
+						}
+					}
+					comp.Out <- reply
+				} else {
+					sendNotSupportedFeature(v)
+				}
+
 			default:
 				sendNotSupportedFeature(v)
 			}
@@ -138,7 +183,7 @@ func must(v interface{}, err error) interface{} {
 
 func sendNotSupportedFeature(iq *xmpp.Iq) {
 	reply := iq.Response(xmpp.IQTypeError)
-	reply.PayloadEncode(xmpp.NewError("cancel", xmpp.FeatureNotImplemented, ""))
+	reply.PayloadEncode(xmpp.NewError("cancel", xmpp.ErrorFeatureNotImplemented, ""))
 	comp.Out <- reply
 }
 
