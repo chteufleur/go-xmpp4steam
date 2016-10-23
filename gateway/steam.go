@@ -1,21 +1,18 @@
 package gateway
 
 import (
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/logger"
 	"github.com/Philipp15b/go-steam"
 	"github.com/Philipp15b/go-steam/protocol/steamlang"
 	"github.com/Philipp15b/go-steam/steamid"
 
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strconv"
 	"time"
 )
 
 const (
-	serverAddrs = "servers.addr"
-
 	State_Offline        = steamlang.EPersonaState_Offline
 	State_Online         = steamlang.EPersonaState_Online
 	State_Busy           = steamlang.EPersonaState_Busy
@@ -24,28 +21,34 @@ const (
 	State_LookingToTrade = steamlang.EPersonaState_LookingToTrade
 	State_LookingToPlay  = steamlang.EPersonaState_LookingToPlay
 	State_Max            = steamlang.EPersonaState_Max
+)
 
-	LogSteamInfo  = "\t[STEAM INFO]\t"
-	LogSteamError = "\t[STEAM ERROR]\t"
-	LogSteamDebug = "\t[STEAM DEBUG]\t"
+var (
+	ServerAddrs = "servers.addr"
 )
 
 func (g *GatewayInfo) SteamRun() {
 	if g.Deleting {
-		log.Printf("%sDeleting gateway", LogSteamInfo)
+		logger.Info.Printf("[%s] Deleting gateway", g.XMPP_JID_Client)
 		return
 	}
 
-	log.Printf("%sRunning", LogSteamInfo)
+	logger.Info.Printf("[%s] Running", g.XMPP_JID_Client)
+	steam.InitializeSteamDirectory()
 	g.setLoginInfos()
-	g.SteamClient = steam.NewClient()
+	if g.SteamClient == nil {
+		g.SteamClient = steam.NewClient()
+	}
 	g.SteamConnecting = false
 	g.SteamClient.ConnectionTimeout = 10 * time.Second
 
 	g.mainSteam()
 
-	log.Printf("%sReach main method's end", LogSteamInfo)
-	go g.SteamRun()
+	logger.Info.Printf("[%s] Reach main method's end", g.XMPP_JID_Client)
+	return
+	g.Disconnect()
+	go g.XMPP_Disconnect()
+	g.Run()
 }
 
 func (g *GatewayInfo) mainSteam() {
@@ -54,7 +57,7 @@ func (g *GatewayInfo) mainSteam() {
 		case *steam.ConnectedEvent:
 			// Connected on server
 			g.SteamConnecting = false
-			log.Printf("%sConnected on Steam serveur", LogSteamDebug)
+			logger.Debug.Printf("[%s] Connected on Steam serveur", g.XMPP_JID_Client)
 			g.SteamClient.Auth.LogOn(g.SteamLoginInfo)
 
 		case *steam.MachineAuthUpdateEvent:
@@ -66,26 +69,37 @@ func (g *GatewayInfo) mainSteam() {
 			g.SendSteamPresence(steamlang.EPersonaState_Online)
 			g.SendXmppMessage(XmppJidComponent, "", "Connected on Steam network")
 
+		case *steam.LoggedOffEvent:
+			logger.Error.Printf("[%s] LoggedOffEvent: ", g.XMPP_JID_Client, e)
+			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Disconnected of Steam network (%v)", e))
+			g.SteamConnecting = false
+
 		case steam.FatalErrorEvent:
-			log.Printf("%sFatalError: ", LogSteamError, e)
-			g.SendXmppMessage(XmppJidComponent, "", "Steam Fatal Error : "+e.Error())
+			logger.Error.Printf("[%s] FatalError: ", g.XMPP_JID_Client, e)
+			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Steam Fatal Error : %v", e))
 			g.DisconnectAllSteamFriend()
-			return
+			g.SteamConnecting = false
+
+		case *steam.DisconnectedEvent:
+			logger.Info.Printf("[%s] Disconnected event", g.XMPP_JID_Client)
+			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Steam Error : %v", e))
+			g.DisconnectAllSteamFriend()
+			g.SteamConnecting = false
 
 		case error:
-			log.Printf("%s", LogSteamError, e)
+			logger.Error.Printf("[%s] ", g.XMPP_JID_Client, e)
 			g.SendXmppMessage(XmppJidComponent, "", "Steam Error : "+e.Error())
 
+		case *steam.LogOnFailedEvent:
+			logger.Error.Printf("[%s] Login failed", g.XMPP_JID_Client, e)
+			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Login failed : %v", e.Result))
+			g.SteamConnecting = false
+
 		case *steam.ClientCMListEvent:
-			// Save servers addresses
-			b, err := json.Marshal(*e)
-			if err != nil {
-				log.Printf("%sFailed to json.Marshal() servers list", LogSteamError)
-			} else {
-				ioutil.WriteFile(serverAddrs, b, 0666)
-			}
+			// Doing nothing with server list
 
 		case *steam.PersonaStateEvent:
+			logger.Debug.Printf("[%s] Received PersonaStateEvent: %v", g.XMPP_JID_Client, e)
 			// Presenc received
 			if _, ok := g.SteamClient.Social.Friends.GetCopy()[e.FriendId]; !ok {
 				// Is not in friend list
@@ -130,6 +144,7 @@ func (g *GatewayInfo) mainSteam() {
 			g.SendXmppPresence(status, tpye, "", steamId+"@"+XmppJidComponent, gameName, name)
 
 		case *steam.ChatMsgEvent:
+			logger.Debug.Printf("[%s] Received ChatMsgEvent: %v", g.XMPP_JID_Client, e)
 			// Message received
 			from := e.ChatterId.ToString() + "@" + XmppJidComponent
 			if e.EntryType == steamlang.EChatEntryType_Typing {
@@ -141,6 +156,7 @@ func (g *GatewayInfo) mainSteam() {
 			}
 
 		case *steam.ChatInviteEvent:
+			logger.Debug.Printf("[%s] Received ChatInviteEvent: %v", g.XMPP_JID_Client, e)
 			// Invitation to play
 			if fromFriend, ok := g.SteamClient.Social.Friends.GetCopy()[e.FriendChatId]; ok {
 				messageToSend := fmt.Sprintf("Currently playing to « %s », would you like to join ?", fromFriend.GameName)
@@ -148,7 +164,8 @@ func (g *GatewayInfo) mainSteam() {
 			}
 
 		default:
-			log.Printf("%s", LogSteamDebug, e)
+			logger.Debug.Printf("[%s] Steam unmatch event (Type: %T): %v", g.XMPP_JID_Client, e, e)
+			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Steam unmatch event (Type: %T): %v", e, e))
 		}
 	}
 }
@@ -164,7 +181,7 @@ func (g *GatewayInfo) setLoginInfos() {
 	if err == nil {
 		g.SteamLoginInfo.SentryFileHash = sentryHash
 	}
-	log.Printf("%sAuthentification of (%s, %s)", LogSteamDebug, g.XMPP_JID_Client, g.SteamLoginInfo.Username)
+	logger.Debug.Printf("Authentification of (%s, %s)", g.XMPP_JID_Client, g.SteamLoginInfo.Username)
 }
 
 func (g *GatewayInfo) IsSteamConnected() bool {
@@ -175,43 +192,36 @@ func (g *GatewayInfo) IsSteamConnected() bool {
 			ret = g.SteamClient.Connected()
 		}
 	}
+	logger.Debug.Printf("[%s] Is Steam connected (Connected: %v)", g.XMPP_JID_Client, ret)
 	return ret
 }
 
 func (g *GatewayInfo) SteamConnect() {
 	if g.IsSteamConnected() {
-		log.Printf("%sTry to connect, but already connected", LogSteamDebug)
+		logger.Debug.Printf("[%s] Try to connect, but already connected", g.XMPP_JID_Client)
 		return
 	}
 	if g.SteamConnecting {
-		log.Printf("%sTry to connect, but currently connecting…", LogSteamDebug)
+		logger.Debug.Printf("[%s] Try to connect, but currently connecting…", g.XMPP_JID_Client)
 		return
 	}
 
 	g.SteamConnecting = true
-	b, err := ioutil.ReadFile(serverAddrs)
-	if err == nil {
-		var toList steam.ClientCMListEvent
-		err := json.Unmarshal(b, &toList)
-		if err != nil {
-			log.Printf("%sFailed to json.Unmarshal() servers list", LogSteamError)
-		} else {
-			log.Printf("%sConnecting...", LogSteamInfo, toList.Addresses[0])
-			g.SteamClient.ConnectTo(toList.Addresses[0])
-		}
-	} else {
-		log.Printf("%sFailed to read servers list file", LogSteamError)
-		log.Printf("%sConnecting...", LogSteamInfo)
-		g.SteamClient.Connect()
-	}
+	go func() {
+		logger.Info.Printf("[%s] Connecting...", g.XMPP_JID_Client)
+		g.SendXmppMessage(XmppJidComponent, "", "Connecting...")
+		addr := g.SteamClient.Connect()
+		logger.Info.Printf("[%s] Connected on %v", g.XMPP_JID_Client, addr)
+		g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Connected on %v", addr))
+	}()
 }
 
 func (g *GatewayInfo) SteamDisconnect() {
 	if !g.IsSteamConnected() {
-		log.Printf("%sTry to disconnect, but already disconnected", LogSteamDebug)
+		logger.Debug.Printf("[%s] Try to disconnect, but already disconnected", g.XMPP_JID_Client)
 		return
 	}
-	log.Printf("%sSteam disconnect", LogSteamInfo)
+	logger.Info.Printf("[%s] Steam disconnect", g.XMPP_JID_Client)
 
 	g.XMPP_Disconnect()
 	g.DisconnectAllSteamFriend()
@@ -219,6 +229,7 @@ func (g *GatewayInfo) SteamDisconnect() {
 }
 
 func (g *GatewayInfo) DisconnectAllSteamFriend() {
+	logger.Debug.Printf("[%s] Disconnect all Steam friend", g.XMPP_JID_Client)
 	for sid, _ := range g.FriendSteamId {
 		g.SendXmppPresence(Status_offline, Type_unavailable, "", sid+"@"+XmppJidComponent, "", "")
 		delete(g.FriendSteamId, sid)
@@ -239,22 +250,24 @@ func (g *GatewayInfo) SendSteamMessageLeaveConversation(steamId string) {
 
 func (g *GatewayInfo) sendSteamMessage(steamId, message string, chatEntryType steamlang.EChatEntryType) {
 	if !g.IsSteamConnected() {
-		log.Printf("%sTry to send message, but disconnected", LogSteamDebug)
+		logger.Debug.Printf("[%s] Try to send message, but disconnected", g.XMPP_JID_Client)
 		return
 	}
 
 	steamIdUint64, err := strconv.ParseUint(steamId, 10, 64)
 	if err == nil {
+		logger.Debug.Printf("[%s] Send message to %v", g.XMPP_JID_Client, steamIdUint64)
 		g.SteamClient.Social.SendMessage(steamid.SteamId(steamIdUint64), chatEntryType, message)
 	} else {
-		log.Printf("%sFailed to get SteamId from %s", LogSteamError, steamId)
+		logger.Error.Printf("[%s] Failed to get SteamId from %s", g.XMPP_JID_Client, steamId)
 	}
 }
 
 func (g *GatewayInfo) SendSteamPresence(status steamlang.EPersonaState) {
 	if !g.IsSteamConnected() {
-		log.Printf("%sTry to send presence, but disconnected", LogSteamDebug)
+		logger.Debug.Printf("[%s] Try to send presence, but disconnected", g.XMPP_JID_Client)
 		return
 	}
+	logger.Debug.Printf("[%s] Send presence (Status: %v)", g.XMPP_JID_Client, status)
 	g.SteamClient.Social.SetPersonaState(status)
 }

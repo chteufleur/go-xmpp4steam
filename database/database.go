@@ -2,22 +2,19 @@ package database
 
 import (
 	"database/sql"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/logger"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
 )
 
 const (
-	databaseFile = "go_xmpp4steam.db"
+	DatabaseFileName = "go_xmpp4steam.db"
 
-	createDatabaseStmt = "create table if not exists users (jid text not null primary key, steamLogin text, steamPwd text, debug int);"
-	insertDatabaseStmt = "insert into users (jid, steamLogin, steamPwd, debug) values(?, ?, ?, ?)"
-	deleteDatabaseStmt = "delete from users where jid=?"
-	selectDatabaseStmt = "select jid, steamLogin, steamPwd, debug from users where jid=?"
-	updateDatabaseStmt = "update users set steamLogin=?, steamPwd=?, debug=? where jid=?"
-
-	LogInfo  = "\t[SQLITE INFO]\t"
-	LogError = "\t[SQLITE ERROR]\t"
-	LogDebug = "\t[SQLITE DEBUG]\t"
+	createDatabaseStmt    = "create table if not exists users (jid text not null primary key, steamLogin text, steamPwd text, debug int);"
+	insertDatabaseStmt    = "insert into users (jid, steamLogin, steamPwd, debug) values(?, ?, ?, ?)"
+	deleteDatabaseStmt    = "delete from users where jid=?"
+	selectDatabaseStmt    = "select jid, steamLogin, steamPwd, debug from users where jid=?"
+	selectAllDatabaseStmt = "select jid, steamLogin, steamPwd, debug from users"
+	updateDatabaseStmt    = "update users set steamLogin=?, steamPwd=?, debug=? where jid=?"
 )
 
 type DatabaseLine struct {
@@ -28,19 +25,24 @@ type DatabaseLine struct {
 }
 
 var (
-	db = new(sql.DB)
+	db           = new(sql.DB)
+	DatabaseFile = ""
 )
 
 func init() {
-	d, err := sql.Open("sqlite3", databaseFile)
+}
+
+func Init() {
+	logger.Info.Printf("Init database (file %s)", DatabaseFile)
+	d, err := sql.Open("sqlite3", DatabaseFile)
 	if err != nil {
-		log.Printf("%sError on openning database", LogError, err)
+		logger.Error.Printf("Error on openning database", err)
 	}
 	db = d
 
 	_, err = db.Exec(createDatabaseStmt)
 	if err != nil {
-		log.Printf("%sFailed to create table", LogError, err)
+		logger.Error.Printf("Failed to create table", err)
 	}
 }
 
@@ -49,7 +51,7 @@ func Close() {
 }
 
 func (newLine *DatabaseLine) AddLine() bool {
-	log.Printf("%sAdd new line %v", LogInfo, newLine)
+	logger.Info.Printf("Add new line %v", newLine)
 
 	isUserRegistred := getLine(newLine.Jid) != nil
 	if isUserRegistred {
@@ -58,7 +60,7 @@ func (newLine *DatabaseLine) AddLine() bool {
 
 	stmt, err := db.Prepare(insertDatabaseStmt)
 	if err != nil {
-		log.Printf("%sError on insert jid %s", LogError, newLine.Jid, err)
+		logger.Error.Printf("Error on insert jid %s", newLine.Jid, err)
 		return false
 	}
 	defer stmt.Close()
@@ -68,7 +70,7 @@ func (newLine *DatabaseLine) AddLine() bool {
 	}
 	_, err = stmt.Exec(newLine.Jid, newLine.SteamLogin, newLine.SteamPwd, debug)
 	if err != nil {
-		log.Printf("%sError on creating SQL statement", LogError, err)
+		logger.Error.Printf("Error on creating SQL statement", err)
 		return false
 	}
 
@@ -76,10 +78,10 @@ func (newLine *DatabaseLine) AddLine() bool {
 }
 
 func (newLine *DatabaseLine) UpdateLine() bool {
-	log.Printf("%sUpdate line %s", LogInfo, newLine.Jid)
+	logger.Info.Printf("Update line %s", newLine.Jid)
 	stmt, err := db.Prepare(updateDatabaseStmt)
 	if err != nil {
-		log.Printf("%sError on update ", LogError, err)
+		logger.Error.Printf("Error on update ", err)
 		return false
 	}
 	defer stmt.Close()
@@ -93,7 +95,7 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 	}
 	_, err = stmt.Exec(newLine.SteamLogin, newLine.SteamPwd, debug, newLine.Jid)
 	if err != nil {
-		log.Printf("%sError on updating SQL statement", LogError, err)
+		logger.Error.Printf("Error on updating SQL statement", err)
 		return false
 	}
 
@@ -118,26 +120,26 @@ func RemoveLine(jid string) bool {
 	line.Jid = jid
 	line.UpdateLine()
 
-	log.Printf("%sRemove line %s", LogInfo, jid)
+	logger.Info.Printf("Remove line %s", jid)
 	stmt, err := db.Prepare(deleteDatabaseStmt)
 	if err != nil {
-		log.Printf("%sError on delete jid %s", LogError, jid, err)
+		logger.Error.Printf("Error on delete jid %s", jid, err)
 		return false
 	}
 	defer stmt.Close()
 	res, err := stmt.Exec(jid)
 	if err != nil {
-		log.Printf("%sError on delete SQL statement", LogError, err)
+		logger.Error.Printf("Error on delete SQL statement", err)
 		return false
 	}
 
 	affect, err := res.RowsAffected()
 	if err != nil {
-		log.Printf("%sError on delete SQL statement", LogError, err)
+		logger.Error.Printf("Error on delete SQL statement", err)
 		return false
 	}
 	if affect == 0 {
-		log.Printf("%sNo line affected", LogDebug)
+		logger.Debug.Printf("No line affected")
 		return false
 	}
 
@@ -148,7 +150,7 @@ func GetLine(jid string) *DatabaseLine {
 	ret := getLine(jid)
 
 	if ret == nil || ret.SteamLogin == "" {
-		log.Printf("%sLine empty", LogDebug)
+		logger.Debug.Printf("Line empty")
 		return nil
 	}
 
@@ -156,19 +158,19 @@ func GetLine(jid string) *DatabaseLine {
 }
 
 func getLine(jid string) *DatabaseLine {
-	log.Printf("%sGet line %s", LogInfo, jid)
+	logger.Info.Printf("Get line %s", jid)
 	ret := new(DatabaseLine)
 
 	stmt, err := db.Prepare(selectDatabaseStmt)
 	if err != nil {
-		log.Printf("%sError on select line", LogError, err)
+		logger.Error.Printf("Error on select line", err)
 		return nil
 	}
 	defer stmt.Close()
 	debug := 0
 	err = stmt.QueryRow(jid).Scan(&ret.Jid, &ret.SteamLogin, &ret.SteamPwd, &debug)
 	if err != nil {
-		log.Printf("%sError on select scan", LogError, err)
+		logger.Error.Printf("Error on select scan", err)
 		return nil
 	}
 	if debug == 1 {
@@ -181,18 +183,24 @@ func getLine(jid string) *DatabaseLine {
 }
 
 func GetAllLines() []DatabaseLine {
-	log.Printf("%sGet all lines", LogInfo)
+	logger.Info.Printf("Get all lines")
 	var ret []DatabaseLine
 
-	rows, err := db.Query("select jid, steamLogin, steamPwd from users")
+	rows, err := db.Query(selectAllDatabaseStmt)
 	if err != nil {
-		log.Printf("%sError on select query", LogError, err)
+		logger.Error.Printf("Error on select query", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		user := new(DatabaseLine)
-		rows.Scan(&user.Jid, &user.SteamLogin, &user.SteamPwd)
+		debug := 0
+		rows.Scan(&user.Jid, &user.SteamLogin, &user.SteamPwd, &debug)
 		if user.SteamLogin != "" {
+			if debug == 1 {
+				user.Debug = true
+			} else {
+				user.Debug = false
+			}
 			ret = append(ret, *user)
 		}
 	}

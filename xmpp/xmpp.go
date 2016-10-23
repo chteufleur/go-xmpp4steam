@@ -4,8 +4,9 @@ import (
 	"git.kingpenguin.tk/chteufleur/go-xmpp.git/src/xmpp"
 	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/database"
 	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/gateway"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/logger"
 
-	"log"
+	"os"
 	"strings"
 	"time"
 )
@@ -14,10 +15,6 @@ const (
 	ActionConnexion       = "action_xmpp_connexion"
 	ActionDeconnexion     = "action_xmpp_deconnexion"
 	ActionMainMethodEnded = "action_xmpp_main_method_ended"
-
-	LogInfo  = "\t[XMPP COMPONENT INFO]\t"
-	LogError = "\t[XMPP COMPONENT ERROR]\t"
-	LogDebug = "\t[XMPP COMPONENT DEBUG]\t"
 )
 
 var (
@@ -36,21 +33,25 @@ var (
 	Debug = true
 
 	MapGatewayInfo = make(map[string]*gateway.GatewayInfo)
+	AdminUsers     = make(map[string]bool)
+	startTime      = time.Now()
 )
 
 func Run() {
-	log.Printf("%sRunning", LogInfo)
+	logger.Info.Printf("Running")
 	// Create stream and configure it as a component connection.
 	jid = must(xmpp.ParseJID(JidStr)).(xmpp.JID)
 	stream = must(xmpp.NewStream(Addr, &xmpp.StreamConfig{LogStanzas: Debug})).(*xmpp.Stream)
 	comp = must(xmpp.NewComponentXMPP(stream, jid, Secret)).(*xmpp.XMPP)
 
 	mainXMPP()
-	log.Printf("%sReach main method's end", LogInfo)
+	time.Sleep(1 * time.Second)
+	logger.Info.Printf("Reach XMPP Run method's end")
 	go Run()
 }
 
 func mainXMPP() {
+	defer logger.Info.Printf("Reach main method's end")
 	// Define xmpp out for all users
 	for _, u := range MapGatewayInfo {
 		u.XMPP_Out = comp.Out
@@ -60,10 +61,14 @@ func mainXMPP() {
 		switch v := x.(type) {
 		case *xmpp.Presence:
 			jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
+			jidBareTo := strings.SplitN(v.To, "/", 2)[0]
 			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
-				log.Printf("%sPresence transfered to %s", LogDebug, jidBareFrom)
-				g.ReceivedXMPP_Presence(v)
+				if jidBareTo == jid.Domain {
+					// Forward only if presence is for componant, in order to to not spam set presence on Steam
+					logger.Debug.Printf("Presence transfered to %s", jidBareFrom)
+					go g.ReceivedXMPP_Presence(v)
+				}
 			} else {
 				if v.Type != gateway.Type_error && v.Type != gateway.Type_probe {
 					SendPresence(gateway.Status_offline, gateway.Type_unavailable, jid.Domain, v.From, "Your are not registred", "")
@@ -74,124 +79,154 @@ func mainXMPP() {
 			jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
 			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
-				log.Printf("%sMessage transfered to %s", LogDebug, jidBareFrom)
-				g.ReceivedXMPP_Message(v)
+				logger.Debug.Printf("Message transfered to %s", jidBareFrom)
+				go g.ReceivedXMPP_Message(v)
 			} else {
 				SendMessage(v.From, "", "Your are not registred. If you want to register, please, send an Ad-Hoc command.")
 			}
 
 		case *xmpp.Iq:
+			jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
 			jidBareTo := strings.SplitN(v.To, "/", 2)[0]
 
-			switch v.PayloadName().Space {
-			case xmpp.NSDiscoInfo:
-				execDisco(v)
+			g := MapGatewayInfo[jidBareFrom]
+			iqTreated := false
+			if g != nil {
+				logger.Debug.Printf("Iq transfered to %s", jidBareFrom)
+				iqTreated = g.ReceivedXMPP_IQ(v)
+			}
 
-			case xmpp.NSDiscoItems:
-				execDisco(v)
+			if !iqTreated {
+				switch v.PayloadName().Space {
+				case xmpp.NSDiscoInfo:
+					execDisco(v)
 
-			case xmpp.NodeAdHocCommand:
-				if jidBareTo == jid.Domain {
-					execCommandAdHoc(v)
-				} else {
-					sendNotSupportedFeature(v)
-				}
+				case xmpp.NSDiscoItems:
+					execDisco(v)
 
-			case xmpp.NSVCardTemp:
-				if jidBareTo == jid.Domain {
-					reply := v.Response(xmpp.IQTypeResult)
-					vcard := &xmpp.VCard{}
-					reply.PayloadEncode(vcard)
-					comp.Out <- reply
-				} else {
-					sendNotSupportedFeature(v)
-				}
-
-			case xmpp.NSJabberClient:
-				if jidBareTo == jid.Domain {
-					reply := v.Response(xmpp.IQTypeResult)
-					reply.PayloadEncode(&xmpp.SoftwareVersion{Name: "go-xmpp4steam", Version: SoftVersion})
-					comp.Out <- reply
-				} else {
-					sendNotSupportedFeature(v)
-				}
-
-			case xmpp.NSRegister:
-				if jidBareTo == jid.Domain {
-					reply := v.Response(xmpp.IQTypeResult)
-					jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
-					registerQuery := &xmpp.RegisterQuery{}
-
-					if v.Type == xmpp.IQTypeGet {
-						registerQuery.Instructions = "Please provide your Steam login and password (Please, be aware that the given Steam account information will be saved into an un-encrypted SQLite database)."
-
-						dbUser := database.GetLine(jidBareFrom)
-						if dbUser != nil {
-							// User already registered
-							registerQuery.Registered = &xmpp.RegisterRegistered{}
-							registerQuery.Username = dbUser.SteamLogin
-							registerQuery.XForm = *getXFormRegistration(dbUser.SteamLogin)
-						} else {
-							registerQuery.XForm = *getXFormRegistration("")
-						}
-						reply.PayloadEncode(registerQuery)
-
-					} else if v.Type == xmpp.IQTypeSet {
-						v.PayloadDecode(registerQuery)
-
-						if registerQuery.Remove != nil {
-							RemoveUser(jidBareFrom)
-						} else {
-							dbUser := getUser(registerQuery.XForm.Fields, v)
-							if dbUser != nil {
-								if dbUser.UpdateUser() {
-									AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd, dbUser.Debug)
-								} else {
-									reply.Type = xmpp.IQTypeError
-									reply.Error = xmpp.NewErrorWithCode("406", "modify", xmpp.ErrorNotAcceptable, "")
-								}
-							} else {
-								reply.Type = xmpp.IQTypeError
-								reply.Error = xmpp.NewErrorWithCode("409", "cancel", xmpp.ErrorConflict, "")
-							}
-						}
+				case xmpp.NodeAdHocCommand:
+					if jidBareTo == jid.Domain {
+						execCommandAdHoc(v)
+					} else {
+						sendNotSupportedFeature(v)
 					}
-					comp.Out <- reply
-				} else {
+
+				case xmpp.NSVCardTemp:
+					if jidBareTo == jid.Domain {
+						reply := v.Response(xmpp.IQTypeResult)
+						vcard := &xmpp.VCard{}
+						reply.PayloadEncode(vcard)
+						comp.Out <- reply
+					} else {
+						sendNotSupportedFeature(v)
+					}
+
+				case xmpp.NSJabberClient:
+					if jidBareTo == jid.Domain {
+						reply := v.Response(xmpp.IQTypeResult)
+						reply.PayloadEncode(&xmpp.SoftwareVersion{Name: "go-xmpp4steam", Version: SoftVersion})
+						comp.Out <- reply
+					} else {
+						sendNotSupportedFeature(v)
+					}
+
+				case xmpp.NSRegister:
+					if jidBareTo == jid.Domain {
+						treatmentNSRegister(v)
+					} else {
+						sendNotSupportedFeature(v)
+					}
+
+				case xmpp.NSRoster:
+					// Do nothing
+
+				case xmpp.NSPing:
+					if jidBareTo == jid.Domain {
+						treatmentNSPing(v)
+					} else {
+						sendNotSupportedFeature(v)
+					}
+
+				default:
 					sendNotSupportedFeature(v)
 				}
-
-			default:
-				sendNotSupportedFeature(v)
 			}
 
 		default:
-			log.Printf("%srecv: %v", LogDebug, x)
+			logger.Debug.Printf("recv: %v", x)
 		}
 	}
-
-	// Send deconnexion
-	SendPresence(gateway.Status_offline, gateway.Type_unavailable, "", "", "", "")
 }
 
 func must(v interface{}, err error) interface{} {
 	if err != nil {
-		log.Fatal(LogError, err)
+		logger.Debug.Printf("%v", err)
+		os.Exit(1)
 	}
 	return v
 }
 
-func sendNotSupportedFeature(iq *xmpp.Iq) {
-	reply := iq.Response(xmpp.IQTypeError)
-	reply.PayloadEncode(xmpp.NewError("cancel", xmpp.ErrorFeatureNotImplemented, ""))
+func treatmentNSRegister(iq *xmpp.Iq) {
+	reply := iq.Response(xmpp.IQTypeResult)
+	jidBareFrom := strings.SplitN(iq.From, "/", 2)[0]
+	registerQuery := &xmpp.RegisterQuery{}
+
+	if iq.Type == xmpp.IQTypeGet {
+		registerQuery.Instructions = "Please provide your Steam login and password (Please, be aware that the given Steam account information will be saved into an un-encrypted SQLite database)."
+
+		dbUser := database.GetLine(jidBareFrom)
+		if dbUser != nil {
+			// User already registered
+			registerQuery.Registered = &xmpp.RegisterRegistered{}
+			registerQuery.Username = dbUser.SteamLogin
+			registerQuery.XForm = *getXFormRegistration(dbUser.SteamLogin)
+		} else {
+			registerQuery.XForm = *getXFormRegistration("")
+		}
+		reply.PayloadEncode(registerQuery)
+
+	} else if iq.Type == xmpp.IQTypeSet {
+		iq.PayloadDecode(registerQuery)
+
+		if registerQuery.Remove != nil {
+			RemoveUser(jidBareFrom)
+		} else {
+			dbUser := getUser(registerQuery.XForm.Fields, iq)
+			if dbUser != nil {
+				if dbUser.UpdateUser() {
+					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd, dbUser.Debug)
+				} else {
+					reply.Type = xmpp.IQTypeError
+					reply.Error = xmpp.NewErrorWithCode("406", "modify", xmpp.ErrorNotAcceptable, "")
+				}
+			} else {
+				reply.Type = xmpp.IQTypeError
+				reply.Error = xmpp.NewErrorWithCode("409", "cancel", xmpp.ErrorConflict, "")
+			}
+		}
+	}
 	comp.Out <- reply
 }
 
+func treatmentNSPing(iq *xmpp.Iq) {
+	reply := iq.Response(xmpp.IQTypeResult)
+	comp.Out <- reply
+}
+
+func sendNotSupportedFeature(iq *xmpp.Iq) {
+	if iq.Type != xmpp.IQTypeError && iq.Type != xmpp.IQTypeResult {
+		reply := iq.Response(xmpp.IQTypeError)
+		reply.PayloadEncode(xmpp.NewError("cancel", xmpp.ErrorFeatureNotImplemented, ""))
+		comp.Out <- reply
+	}
+}
+
 func Disconnect() {
-	log.Printf("%sXMPP disconnect", LogInfo)
+	logger.Info.Printf("XMPP disconnect")
 	for _, u := range MapGatewayInfo {
 		u.SteamDisconnect()
 	}
+	comp.Close()
 }
 
 func SendPresence(status, tpye, from, to, message, nick string) {
@@ -228,18 +263,18 @@ func SendMessage(to, subject, message string) {
 		m.Subject = subject
 	}
 
-	log.Printf("%sSenp message %v", LogInfo, m)
+	logger.Info.Printf("Senp message %v", m)
 	comp.Out <- m
 }
 
-func AddNewUser(jid, steamLogin, steamPwd string, debugMessage bool) {
-	log.Printf("%sAdd user %s to the map", LogInfo, jid)
+func AddNewUser(jidUser, steamLogin, steamPwd string, debugMessage bool) {
+	logger.Info.Printf("Add user %s to the map (debug mode set to %v)", jidUser, debugMessage)
 
 	g := new(gateway.GatewayInfo)
 	g.SteamLogin = steamLogin
 	g.SteamPassword = steamPwd
-	g.XMPP_JID_Client = jid
-	g.SentryFile = gateway.SentryDirectory + jid
+	g.XMPP_JID_Client = jidUser
+	g.SentryFile = gateway.SentryDirectory + jidUser
 	g.FriendSteamId = make(map[string]*gateway.StatusSteamFriend)
 	g.Deleting = false
 
@@ -247,9 +282,20 @@ func AddNewUser(jid, steamLogin, steamPwd string, debugMessage bool) {
 	g.XMPP_Connected_Client = make(map[string]bool)
 	g.XMPP_Composing_Timers = make(map[string]*time.Timer)
 	g.DebugMessage = debugMessage
+	g.XMPP_IQ_RemoteRoster_Request = make(map[string]string)
+	g.AllowEditRoster = false
 
-	MapGatewayInfo[jid] = g
+	MapGatewayInfo[jidUser] = g
 	go g.Run()
+
+	logger.Info.Printf("Check roster edition by asking with remote roster manager namespace")
+	// Ask if remote roster is allow
+	iqId := gateway.NextIqId()
+	g.XMPP_IQ_RemoteRoster_Request[iqId] = gateway.RemoteRosterRequestPermission
+	iq := xmpp.Iq{To: jidUser, From: jid.Domain, Type: xmpp.IQTypeGet, Id: iqId}
+	// iq.PayloadEncode(&xmpp.RosterQuery{})
+	iq.PayloadEncode(&xmpp.RemoteRosterManagerQuery{Reason: "Manage contacts in the Steam contact list", Type: xmpp.RemoteRosterManagerTypeRequest})
+	comp.Out <- iq
 }
 
 func RemoveUser(jidBare string) bool {

@@ -3,9 +3,11 @@ package xmpp
 import (
 	"git.kingpenguin.tk/chteufleur/go-xmpp.git/src/xmpp"
 	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/database"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/logger"
 
-	"log"
+	"fmt"
 	"strings"
+	"time"
 )
 
 const (
@@ -14,6 +16,8 @@ const (
 	CommandDisconnectSteam    = "disconnectSteam"
 	CommandRemoveRegistration = "removeRegistration"
 	CommandToggleDebugMode    = "toggleDebugMode"
+	CommandUptimeMode         = "uptime"
+	CommandMessageBroadcast   = "messageBroadcast"
 )
 
 var (
@@ -23,7 +27,7 @@ var (
 )
 
 func execDiscoCommand(iq *xmpp.Iq) {
-	log.Printf("%sAd-Hoc Command", LogInfo)
+	logger.Info.Printf("Ad-Hoc Command")
 
 	// Disco Ad-Hoc
 	reply := iq.Response(xmpp.IQTypeResult)
@@ -49,6 +53,13 @@ func execDiscoCommand(iq *xmpp.Iq) {
 			discoItem.Item = append(discoItem.Item, *discoI)
 			discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandToggleDebugMode, Name: "Toggle debug mode"}
 			discoItem.Item = append(discoItem.Item, *discoI)
+			discoI = &xmpp.DiscoItem{JID: jid.Domain, Node: CommandUptimeMode, Name: "Uptime"}
+			discoItem.Item = append(discoItem.Item, *discoI)
+		}
+
+		if AdminUsers[jidBareFrom] {
+			discoI := &xmpp.DiscoItem{JID: jid.Domain, Node: CommandMessageBroadcast, Name: "Broadcast a message"}
+			discoItem.Item = append(discoItem.Item, *discoI)
 		}
 	}
 
@@ -57,7 +68,7 @@ func execDiscoCommand(iq *xmpp.Iq) {
 }
 
 func execDisco(iq *xmpp.Iq) {
-	log.Printf("%sDisco Feature", LogInfo)
+	logger.Info.Printf("Disco Feature")
 	jidBareTo := strings.SplitN(iq.To, "/", 2)[0]
 
 	discoInfoReceived := &xmpp.DiscoItems{}
@@ -69,14 +80,18 @@ func execDisco(iq *xmpp.Iq) {
 
 		discoInfo := &xmpp.DiscoInfo{}
 		if jidBareTo == jid.Domain {
+			// Only gateway
 			discoInfo.Identity = append(discoInfo.Identity, *identityGateway)
 			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NodeAdHocCommand})
 			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSJabberClient})
 			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSRegister})
+			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSPing})
 		} else {
+			// Only steam users
 			discoInfo.Identity = append(discoInfo.Identity, *identityClients)
 			discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSChatStatesNotification})
 		}
+		// Both
 		discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSDiscoInfo})
 		discoInfo.Feature = append(discoInfo.Feature, xmpp.DiscoFeature{Var: xmpp.NSDiscoItems})
 
@@ -99,10 +114,11 @@ func execDisco(iq *xmpp.Iq) {
 func execCommandAdHoc(iq *xmpp.Iq) {
 	adHoc := &xmpp.AdHocCommand{}
 	iq.PayloadDecode(adHoc)
+	jidBareFrom := strings.SplitN(iq.From, "/", 2)[0]
 
 	if adHoc.SessionID == "" && adHoc.Action == xmpp.ActionAdHocExecute {
 		// First step in the command
-		log.Printf("%sAd-Hoc command (Node : %s). First step.", LogInfo, adHoc.Node)
+		logger.Info.Printf("Ad-Hoc command (Node : %s). First step.", adHoc.Node)
 
 		reply := iq.Response(xmpp.IQTypeResult)
 		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocExecute, SessionID: xmpp.SessionID()}
@@ -120,13 +136,13 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			cmd.XForm = *cmdXForm
 
 		} else if adHoc.Node == CommandDisconnectSteam {
+			// Command steam deconnection
 			cmd.Status = xmpp.StatusAdHocCompleted
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Force Steam deconnexion"}
 			cmd.XForm = *cmdXForm
 			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
 
-			jidBare := strings.SplitN(iq.From, "/", 2)[0]
-			g := MapGatewayInfo[jidBare]
+			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
 				g.Disconnect()
 				note.Value = "Send deconnexion on Steam network"
@@ -135,13 +151,13 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			}
 			cmd.Note = *note
 		} else if adHoc.Node == CommandRemoveRegistration {
+			// Command remove registration
 			cmd.Status = xmpp.StatusAdHocCompleted
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Remove registration"}
 			cmd.XForm = *cmdXForm
 			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
 
-			jidBare := strings.SplitN(iq.From, "/", 2)[0]
-			if RemoveUser(jidBare) {
+			if RemoveUser(jidBareFrom) {
 				note.Value = "Remove registration success."
 			} else {
 				note.Value = "Failed to remove your registration."
@@ -149,16 +165,16 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 
 			cmd.Note = *note
 		} else if adHoc.Node == CommandToggleDebugMode {
+			// Command toggle debug mode
 			cmd.Status = xmpp.StatusAdHocCompleted
 			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Toggle debug mode"}
 			cmd.XForm = *cmdXForm
 			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
 
-			jidBare := strings.SplitN(iq.From, "/", 2)[0]
-			dbUser := database.GetLine(jidBare)
+			dbUser := database.GetLine(jidBareFrom)
 			if dbUser != nil {
 				dbUser.Debug = !dbUser.Debug
-				g := MapGatewayInfo[jidBare]
+				g := MapGatewayInfo[jidBareFrom]
 				ok := dbUser.UpdateLine()
 				if ok && g != nil {
 					g.DebugMessage = dbUser.Debug
@@ -175,12 +191,29 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			}
 
 			cmd.Note = *note
+		} else if adHoc.Node == CommandUptimeMode {
+			// Command get uptime
+			cmd.Status = xmpp.StatusAdHocCompleted
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Uptime"}
+			cmd.XForm = *cmdXForm
+			deltaT := time.Since(startTime)
+			val := fmt.Sprintf("%dj %dh %dm %ds", int64(deltaT.Hours()/24), int64(deltaT.Hours())%24, int64(deltaT.Minutes())%60, int64(deltaT.Seconds())%60)
+			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo, Value: val}
+
+			cmd.Note = *note
+		} else if adHoc.Node == CommandMessageBroadcast && AdminUsers[jidBareFrom] {
+			// Command send broadcast message
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocForm, Title: "Broadcast a message", Instructions: "Message to broadcast to all user."}
+
+			field := &xmpp.AdHocField{Var: "message", Label: "Message", Type: xmpp.TypeAdHocFieldTextSingle}
+			cmdXForm.Fields = append(cmdXForm.Fields, *field)
+			cmd.XForm = *cmdXForm
 		}
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
 	} else if adHoc.Action == xmpp.ActionAdHocExecute || adHoc.Action == xmpp.ActionAdHocNext {
 		// Last step in the command
-		log.Printf("%sAd-Hoc command (Node : %s). Last step.", LogInfo, adHoc.Node)
+		logger.Info.Printf("Ad-Hoc command (Node : %s). Last step.", adHoc.Node)
 		reply := iq.Response(xmpp.IQTypeResult)
 		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCompleted, SessionID: adHoc.SessionID}
 
@@ -200,8 +233,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			}
 			if authCode != "" {
 				// Succeded
-				jidBare := strings.SplitN(iq.From, "/", 2)[0]
-				g := MapGatewayInfo[jidBare]
+				g := MapGatewayInfo[jidBareFrom]
 				if g != nil {
 					g.SetSteamAuthCode(authCode)
 					note.Value = "Command succeded !"
@@ -233,13 +265,39 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 				note.Value = "Failed because Steam login or Steam password is empty."
 			}
 			cmd.Note = *note
+
+		} else if adHoc.Node == CommandMessageBroadcast && AdminUsers[jidBareFrom] {
+			cmdXForm := &xmpp.AdHocXForm{Type: xmpp.TypeAdHocResult, Title: "Broadcast a message"}
+			cmd.XForm = *cmdXForm
+			note := &xmpp.AdHocNote{Type: xmpp.TypeAdHocNoteInfo}
+
+			// Command Auth Code
+			message := ""
+			fields := adHoc.XForm.Fields
+			for _, field := range fields {
+				if field.Var == "message" {
+					message = field.Value
+					break
+				}
+			}
+			if message != "" {
+				// Succeded
+				for userJID, _ := range MapGatewayInfo {
+					SendMessage(userJID, "", message)
+				}
+				note.Value = "Message sended to all registered users"
+			} else {
+				// Failed
+				note.Value = "There is no message to send"
+			}
+			cmd.Note = *note
 		}
 
 		reply.PayloadEncode(cmd)
 		comp.Out <- reply
 	} else if adHoc.Action == xmpp.ActionAdHocCancel {
 		// command canceled
-		log.Printf("%sAd-Hoc command (Node : %s). Command canceled.", LogInfo, adHoc.Node)
+		logger.Info.Printf("Ad-Hoc command (Node : %s). Command canceled.", adHoc.Node)
 		reply := iq.Response(xmpp.IQTypeResult)
 		cmd := &xmpp.AdHocCommand{Node: adHoc.Node, Status: xmpp.StatusAdHocCanceled, SessionID: adHoc.SessionID}
 		reply.PayloadEncode(cmd)
@@ -272,9 +330,9 @@ func getUser(fields []xmpp.AdHocField, iq *xmpp.Iq) *database.DatabaseLine {
 	}
 	if steamLogin != "" {
 		// Succeded
-		jidBare := strings.SplitN(iq.From, "/", 2)[0]
+		jidBareFrom := strings.SplitN(iq.From, "/", 2)[0]
 		dbUser := new(database.DatabaseLine)
-		dbUser.Jid = jidBare
+		dbUser.Jid = jidBareFrom
 		dbUser.SteamLogin = steamLogin
 		dbUser.SteamPwd = steamPwd
 		dbUser.Debug = false

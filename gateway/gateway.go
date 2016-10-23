@@ -2,12 +2,20 @@ package gateway
 
 import (
 	"github.com/Philipp15b/go-steam"
+
 	"time"
 )
 
 const (
+	resource = "go-xmpp4steam"
+)
+
+var (
 	SentryDirectory = "sentries/"
-	resource        = "go-xmpp4steam"
+	XmppGroupUser   = "Steam"
+
+	RemoteRosterRequestPermission = "remote-roster-request-permission"
+	RemoteRosterRequestRoster     = "remote-roster-request-roster"
 )
 
 type GatewayInfo struct {
@@ -22,11 +30,13 @@ type GatewayInfo struct {
 	Deleting        bool
 
 	// XMPP
-	XMPP_JID_Client       string
-	XMPP_Out              chan interface{}
-	XMPP_Connected_Client map[string]bool
-	XMPP_Composing_Timers map[string]*time.Timer
-	DebugMessage          bool
+	XMPP_JID_Client              string
+	XMPP_Out                     chan interface{}
+	XMPP_Connected_Client        map[string]bool
+	XMPP_Composing_Timers        map[string]*time.Timer
+	DebugMessage                 bool
+	XMPP_IQ_RemoteRoster_Request map[string]string
+	AllowEditRoster              bool
 }
 
 type StatusSteamFriend struct {
@@ -45,11 +55,17 @@ func (g *GatewayInfo) SetSteamAuthCode(authCode string) {
 }
 
 func (g *GatewayInfo) Disconnect() {
-	g.XMPP_Disconnect()
+	go g.XMPP_Disconnect()
 	go g.SteamDisconnect()
+	g.SteamConnecting = false
 }
 
 func (g *GatewayInfo) Delete() {
 	g.Deleting = true
+
+	if g.AllowEditRoster {
+		g.removeAllUserFromRoster()
+	}
+
 	g.Disconnect()
 }

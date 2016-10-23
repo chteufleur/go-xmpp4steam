@@ -2,9 +2,10 @@ package gateway
 
 import (
 	"git.kingpenguin.tk/chteufleur/go-xmpp.git/src/xmpp"
+	"git.kingpenguin.tk/chteufleur/go-xmpp4steam.git/logger"
 	"github.com/Philipp15b/go-steam/protocol/steamlang"
 
-	"log"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,15 +30,19 @@ const (
 	ActionConnexion       = "action_xmpp_connexion"
 	ActionDeconnexion     = "action_xmpp_deconnexion"
 	ActionMainMethodEnded = "action_xmpp_main_method_ended"
-
-	LogXmppInfo  = "\t[XMPP INFO]\t"
-	LogXmppError = "\t[XMPP ERROR]\t"
-	LogXmppDebug = "\t[XMPP DEBUG]\t"
 )
 
 var (
 	XmppJidComponent = ""
+
+	iqId = uint64(0)
 )
+
+func NextIqId() string {
+	iqId += 1
+	ret := strconv.FormatUint(iqId, 10)
+	return ret
+}
 
 func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 	if presence.Type == Type_error {
@@ -77,19 +82,7 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 			if len(g.XMPP_Connected_Client) <= 0 {
 				g.Disconnect()
 			}
-		} else if presence.Type == Type_available {
-			go g.SteamConnect()
-			transfertPresence = true
-		}
-
-	} else {
-		// Destination is Steam user
-		if presence.Type == Type_unavailable {
-			// Disconnect
-			if len(g.XMPP_Connected_Client) <= 0 {
-				g.Disconnect()
-			}
-		} else if presence.Type == Type_available {
+		} else {
 			go g.SteamConnect()
 			transfertPresence = true
 		}
@@ -118,7 +111,7 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 
 		if g.IsSteamConnected() {
 			g.SendSteamPresence(steamStatus)
-			g.SendXmppPresence(presence.Show, presence.Type, presence.From, "", presence.Status, "")
+			g.SendXmppPresence(presence.Show, presence.Type, "", "", presence.Status, "")
 		}
 	}
 }
@@ -138,6 +131,52 @@ func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 			g.SendSteamMessage(steamID, message.Body)
 		}
 	}
+}
+
+func (g *GatewayInfo) ReceivedXMPP_IQ(iq *xmpp.Iq) bool {
+	ret := false
+	if g.XMPP_IQ_RemoteRoster_Request[iq.Id] == RemoteRosterRequestPermission {
+		delete(g.XMPP_IQ_RemoteRoster_Request, iq.Id)
+
+		if iq.Type == xmpp.IQTypeError && iq.Error.Condition() == xmpp.ErrorForbidden {
+			g.AllowEditRoster = false
+			logger.Info.Printf("Set allow roster edition to %v", g.AllowEditRoster)
+		} else if iq.Type == xmpp.IQTypeSet && iq.PayloadName().Space == xmpp.NSRemoteRosterManager {
+			remoteRosterQuery := &xmpp.RemoteRosterManagerQuery{}
+			iq.PayloadDecode(remoteRosterQuery)
+			if remoteRosterQuery.Type == xmpp.RemoteRosterManagerTypeAllowed {
+				g.AllowEditRoster = true
+			} else if remoteRosterQuery.Type == xmpp.RemoteRosterManagerTypeRejected {
+				g.AllowEditRoster = false
+			} else {
+				g.AllowEditRoster = false
+			}
+			logger.Info.Printf("Set allow roster edition to %v", g.AllowEditRoster)
+			g.SendXmppMessage(XmppJidComponent, "", "Set allow roster edition to "+strconv.FormatBool(g.AllowEditRoster))
+		} else {
+			logger.Info.Printf("Check roster edition authorisation by querying roster's user")
+			// Remote roster namespace may not be supported (like prosody), so we send a roster query
+			iqId := NextIqId()
+			g.XMPP_IQ_RemoteRoster_Request[iqId] = RemoteRosterRequestRoster
+			iqSend := &xmpp.Iq{Id: iqId, Type: xmpp.IQTypeGet, From: iq.To, To: iq.From}
+			iqSend.PayloadEncode(&xmpp.RosterQuery{})
+			g.XMPP_Out <- iqSend
+		}
+		ret = true
+
+	} else if g.XMPP_IQ_RemoteRoster_Request[iq.Id] == RemoteRosterRequestRoster {
+		delete(g.XMPP_IQ_RemoteRoster_Request, iq.Id)
+		if iq.Type == xmpp.IQTypeResult && iq.PayloadName().Space == xmpp.NSRoster {
+			g.AllowEditRoster = true
+		} else {
+			g.AllowEditRoster = false
+		}
+		logger.Info.Printf("Set allow roster edition to %v", g.AllowEditRoster)
+		g.SendXmppMessage(XmppJidComponent, "", "Set allow roster edition to "+strconv.FormatBool(g.AllowEditRoster))
+		ret = true
+	}
+
+	return ret
 }
 
 func (g *GatewayInfo) XMPP_Disconnect() {
@@ -165,18 +204,53 @@ func (g *GatewayInfo) SendXmppPresence(status, tpye, to, from, message, nick str
 		p.To = to
 	}
 	if from == "" {
-		// TODO add an option to allow message comming directly from the gateway
 		p.From = XmppJidComponent + "/" + resource
 	} else {
 		p.From = from + "/" + resource
 	}
 
-	log.Printf("%sSend presence %v", LogXmppInfo, p)
-	g.XMPP_Out <- p
+	if tpye == Type_subscribe && g.AllowEditRoster {
+		g.addUserIntoRoster(from, nick)
+	} else {
+		logger.Info.Printf("Send presence %v", p)
+		g.XMPP_Out <- p
+	}
+}
+
+func (g *GatewayInfo) addUserIntoRoster(jid, nick string) {
+	iq := xmpp.Iq{To: g.XMPP_JID_Client, Type: xmpp.IQTypeSet, Id: NextIqId()}
+	query := &xmpp.RosterQuery{}
+	queryItem := &xmpp.RosterItem{JID: jid, Name: nick, Subscription: xmpp.RosterSubscriptionBoth}
+	queryItem.Groupes = append(queryItem.Groupes, XmppGroupUser)
+	query.Items = append(query.Items, *queryItem)
+	iq.PayloadEncode(query)
+	logger.Info.Printf("Add user into roster %v", iq)
+	g.XMPP_Out <- iq
+}
+
+func (g *GatewayInfo) removeAllUserFromRoster() {
+	// Friends
+	for steamId, _ := range g.SteamClient.Social.Friends.GetCopy() {
+		iq := xmpp.Iq{To: g.XMPP_JID_Client, Type: xmpp.IQTypeSet, Id: NextIqId()}
+		query := &xmpp.RosterQuery{}
+		query.Items = append(query.Items, *&xmpp.RosterItem{JID: steamId.ToString() + "@" + XmppJidComponent, Subscription: xmpp.RosterSubscriptionRemove})
+		iq.PayloadEncode(query)
+		logger.Info.Printf("Remove steam user roster")
+		g.XMPP_Out <- iq
+	}
+	// Myself
+	iq := xmpp.Iq{To: g.XMPP_JID_Client, Type: xmpp.IQTypeSet, Id: NextIqId()}
+	query := &xmpp.RosterQuery{}
+	query.Items = append(query.Items, *&xmpp.RosterItem{JID: g.SteamClient.SteamId().ToString() + "@" + XmppJidComponent, Subscription: xmpp.RosterSubscriptionRemove})
+	iq.PayloadEncode(query)
+	logger.Info.Printf("Remove steam user roster")
+	g.XMPP_Out <- iq
 }
 
 func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
 	g.sendXmppMessage(from, subject, message, &xmpp.Active{})
+	return
+
 	g.stopComposingTimer(from)
 
 	// Make inactive after 2 min if nothing happen
@@ -188,11 +262,15 @@ func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
 
 func (g *GatewayInfo) SendXmppMessageLeaveConversation(from string) {
 	g.sendXmppMessage(from, "", "", &xmpp.Gone{})
+	return
+
 	g.stopComposingTimer(from)
 }
 
 func (g *GatewayInfo) SendXmppMessageComposing(from string) {
 	g.sendXmppMessage(from, "", "", &xmpp.Composing{})
+	return
+
 	g.stopComposingTimer(from)
 
 	timer := time.AfterFunc(20*time.Second, func() {
@@ -240,7 +318,7 @@ func (g *GatewayInfo) sendXmppMessage(from, subject, message string, chatState i
 			m.Active = &xmpp.Active{}
 		}
 
-		log.Printf("%sSend message %v", LogXmppInfo, m)
+		logger.Info.Printf("Send message %v", m)
 		g.XMPP_Out <- m
 	}
 }
