@@ -2,8 +2,6 @@ package gateway
 
 import (
 	"github.com/Philipp15b/go-steam"
-
-	"time"
 )
 
 const (
@@ -33,10 +31,10 @@ type GatewayInfo struct {
 	XMPP_JID_Client              string
 	XMPP_Out                     chan interface{}
 	XMPP_Connected_Client        map[string]bool
-	XMPP_Composing_Timers        map[string]*time.Timer
 	DebugMessage                 bool
 	XMPP_IQ_RemoteRoster_Request map[string]string
 	AllowEditRoster              bool
+	ChatstateNotificationData    chan string
 }
 
 type StatusSteamFriend struct {
@@ -48,6 +46,7 @@ type StatusSteamFriend struct {
 
 func (g *GatewayInfo) Run() {
 	go g.SteamRun()
+	go g.chatstatesNotification()
 }
 
 func (g *GatewayInfo) SetSteamAuthCode(authCode string) {

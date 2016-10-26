@@ -280,7 +280,6 @@ func AddNewUser(jidUser, steamLogin, steamPwd string, debugMessage bool) {
 
 	g.XMPP_Out = comp.Out
 	g.XMPP_Connected_Client = make(map[string]bool)
-	g.XMPP_Composing_Timers = make(map[string]*time.Timer)
 	g.DebugMessage = debugMessage
 	g.XMPP_IQ_RemoteRoster_Request = make(map[string]string)
 	g.AllowEditRoster = false

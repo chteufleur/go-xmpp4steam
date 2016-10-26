@@ -249,49 +249,80 @@ func (g *GatewayInfo) removeAllUserFromRoster() {
 
 func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
 	g.sendXmppMessage(from, subject, message, &xmpp.Active{})
-	return
-
-	g.stopComposingTimer(from)
-
-	// Make inactive after 2 min if nothing happen
-	t := time.AfterFunc(120*time.Second, func() {
-		g.sendXmppMessage(from, "", "", &xmpp.Inactive{})
-	})
-	g.XMPP_Composing_Timers[from] = t
+	g.ChatstateNotificationData <- from
+	g.ChatstateNotificationData <- "inactive"
 }
 
 func (g *GatewayInfo) SendXmppMessageLeaveConversation(from string) {
 	g.sendXmppMessage(from, "", "", &xmpp.Gone{})
-	return
-
-	g.stopComposingTimer(from)
+	g.ChatstateNotificationData <- from
+	g.ChatstateNotificationData <- "stop"
 }
 
 func (g *GatewayInfo) SendXmppMessageComposing(from string) {
 	g.sendXmppMessage(from, "", "", &xmpp.Composing{})
-	return
-
-	g.stopComposingTimer(from)
-
-	timer := time.AfterFunc(20*time.Second, func() {
-		g.sendXmppMessage(from, "", "", &xmpp.Paused{})
-
-		t := time.AfterFunc(100*time.Second, func() {
-			g.sendXmppMessage(from, "", "", &xmpp.Inactive{})
-		})
-		g.XMPP_Composing_Timers[from] = t
-	})
-	g.XMPP_Composing_Timers[from] = timer
+	g.ChatstateNotificationData <- from
+	g.ChatstateNotificationData <- "paused"
+	g.ChatstateNotificationData <- from
+	g.ChatstateNotificationData <- "inactive"
 }
 
-func (g *GatewayInfo) stopComposingTimer(from string) {
-	if t, ok := g.XMPP_Composing_Timers[from]; ok {
-		// Delete previous timer if exist
-		if !t.Stop() {
-			// Prevent firing after stop
-			<-t.C
+func (g *GatewayInfo) chatstatesNotification() {
+	inactiveTimers := make(map[string]*time.Timer)
+	pausedTimers := make(map[string]*time.Timer)
+	g.ChatstateNotificationData = make(chan string)
+
+	for {
+		jid := <-g.ChatstateNotificationData
+		chatstate := <-g.ChatstateNotificationData
+
+		timerInactive, okInactive := inactiveTimers[jid]
+		timerPaused, okPaused := pausedTimers[jid]
+
+		switch chatstate {
+		case "stop":
+			if okInactive {
+				if !timerInactive.Stop() {
+					<-timerInactive.C
+				}
+				delete(inactiveTimers, jid)
+			}
+			if okPaused {
+				if !timerPaused.Stop() {
+					<-timerPaused.C
+				}
+				delete(pausedTimers, jid)
+			}
+
+		case "paused":
+			if okInactive {
+				if !timerPaused.Stop() {
+					<-timerPaused.C
+				}
+				timerPaused.Reset(20 * time.Second)
+			} else {
+				timerPaused = time.AfterFunc(20*time.Second, func() {
+					g.sendXmppMessage(jid, "", "", &xmpp.Paused{})
+					delete(pausedTimers, jid)
+				})
+				pausedTimers[jid] = timerPaused
+			}
+
+		case "inactive":
+			if okInactive {
+				if !timerInactive.Stop() {
+					<-timerInactive.C
+				}
+				timerInactive.Reset(120 * time.Second)
+			} else {
+				timerInactive = time.AfterFunc(120*time.Second, func() {
+					g.sendXmppMessage(jid, "", "", &xmpp.Inactive{})
+					delete(inactiveTimers, jid)
+				})
+				inactiveTimers[jid] = timerInactive
+			}
+
 		}
-		delete(g.XMPP_Composing_Timers, from)
 	}
 }
 
