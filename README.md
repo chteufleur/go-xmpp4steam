@@ -13,14 +13,21 @@ go-xmpp4steam is a XMPP/Steam gateway.
  * [cfg](https://github.com/jimlawless/cfg) for the configuration file.
 
 
-Download the CA at [https://kingpenguin.tk/ressources/cacert.pem](https://kingpenguin.tk/ressources/cacert.pem), then install it on your operating system.
-Once installed, go into your $GOPATH directory and go get the source code.
+### Build and run
+You must first [install go environment](https://golang.org/doc/install) on your system.
+Then, go into your $GOPATH directory and go get the source code (This will download the source code and the dependencies).
 ```sh
 go get git.kingpenguin.tk/chteufleur/go-xmpp4steam.git
 ```
 
+First, you need to go into directory ``$GOPATH/src/chteufleur/go-xmpp4steam.git``.
+Then, you can run the project directly by using command ``go run main.go``.
+Or, in order to build the project you can run the command ``go build main.go``.
+It will generate a binary that you can run as any binary file.
+
 ### Configure
-Configure the gateway by editing the ``xmpp4steam.cfg`` file in order to give all XMPP component information.
+Configure the gateway by editing the ``xmpp4steam.conf`` file in order to give all XMPP component information. This configuration file has to be placed following the [XDG specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) (example ``/etc/xdg/http-auth/xmpp4steam.conf``).
+An example of the config file can be found in [the repos](https://git.kingpenguin.tk/chteufleur/HTTPAuthentificationOverXMPP/src/master/xmpp4steam.conf).
 
 ### Utilization
 To register, you have to send an Ad-Hoc command to the gateway in order to give your Steam login information.
