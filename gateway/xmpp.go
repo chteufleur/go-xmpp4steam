@@ -250,6 +250,8 @@ func (g *GatewayInfo) removeAllUserFromRoster() {
 func (g *GatewayInfo) SendXmppMessage(from, subject, message string) {
 	g.sendXmppMessage(from, subject, message, &xmpp.Active{})
 	g.ChatstateNotificationData <- from
+	g.ChatstateNotificationData <- "stop"
+	g.ChatstateNotificationData <- from
 	g.ChatstateNotificationData <- "inactive"
 }
 
