@@ -51,7 +51,7 @@ func loadConfigFile() bool {
 		if _, err := os.Stat(configFile); err == nil {
 			// The config file exist
 			if cfg.Load(configFile, MapConfig) == nil {
-				// And has been loaded succesfully
+				// And has been loaded successfully
 				logger.Info.Println("Find configuration file at " + configFile)
 				ret = true
 				break

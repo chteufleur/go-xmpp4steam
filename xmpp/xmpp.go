@@ -65,8 +65,8 @@ func mainXMPP() {
 			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
 				if jidBareTo == jid.Domain {
-					// Forward only if presence is for componant, in order to to not spam set presence on Steam
-					logger.Debug.Printf("Presence transfered to %s", jidBareFrom)
+					// Forward only if presence is for component, in order to to not spam set presence on Steam
+					logger.Debug.Printf("Presence transferred to %s", jidBareFrom)
 					go g.ReceivedXMPP_Presence(v)
 				}
 			} else {
@@ -79,7 +79,7 @@ func mainXMPP() {
 			jidBareFrom := strings.SplitN(v.From, "/", 2)[0]
 			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
-				logger.Debug.Printf("Message transfered to %s", jidBareFrom)
+				logger.Debug.Printf("Message transferred to %s", jidBareFrom)
 				go g.ReceivedXMPP_Message(v)
 			} else {
 				SendMessage(v.From, "", "Your are not registred. If you want to register, please, send an Ad-Hoc command.")
@@ -92,7 +92,7 @@ func mainXMPP() {
 			g := MapGatewayInfo[jidBareFrom]
 			iqTreated := false
 			if g != nil {
-				logger.Debug.Printf("Iq transfered to %s", jidBareFrom)
+				logger.Debug.Printf("Iq transferred to %s", jidBareFrom)
 				iqTreated = g.ReceivedXMPP_IQ(v)
 			}
 

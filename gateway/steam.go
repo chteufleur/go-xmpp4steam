@@ -45,10 +45,6 @@ func (g *GatewayInfo) SteamRun() {
 	g.mainSteam()
 
 	logger.Info.Printf("[%s] Reach main method's end", g.XMPP_JID_Client)
-	return
-	g.Disconnect()
-	go g.XMPP_Disconnect()
-	g.Run()
 }
 
 func (g *GatewayInfo) mainSteam() {

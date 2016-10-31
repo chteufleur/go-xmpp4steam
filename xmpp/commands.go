@@ -232,11 +232,11 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 				}
 			}
 			if authCode != "" {
-				// Succeded
+				// Succeeded
 				g := MapGatewayInfo[jidBareFrom]
 				if g != nil {
 					g.SetSteamAuthCode(authCode)
-					note.Value = "Command succeded !"
+					note.Value = "Command succeeded !"
 				} else {
 					note.Value = "Your are not registred. Please, register before sending Steam auth code."
 				}
@@ -256,7 +256,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			if dbUser != nil {
 				if dbUser.UpdateUser() {
 					AddNewUser(dbUser.Jid, dbUser.SteamLogin, dbUser.SteamPwd, dbUser.Debug)
-					note.Value = "Command succeded !"
+					note.Value = "Command succeeded !"
 				} else {
 					note.Value = "Error append while executing command"
 				}
@@ -281,7 +281,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 				}
 			}
 			if message != "" {
-				// Succeded
+				// Succeeded
 				for userJID, _ := range MapGatewayInfo {
 					SendMessage(userJID, "", message)
 				}
@@ -329,7 +329,7 @@ func getUser(fields []xmpp.AdHocField, iq *xmpp.Iq) *database.DatabaseLine {
 		}
 	}
 	if steamLogin != "" {
-		// Succeded
+		// Succeeded
 		jidBareFrom := strings.SplitN(iq.From, "/", 2)[0]
 		dbUser := new(database.DatabaseLine)
 		dbUser.Jid = jidBareFrom
