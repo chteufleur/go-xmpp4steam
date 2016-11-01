@@ -36,13 +36,13 @@ func Init() {
 	logger.Info.Printf("Init database (file %s)", DatabaseFile)
 	d, err := sql.Open("sqlite3", DatabaseFile)
 	if err != nil {
-		logger.Error.Printf("Error on openning database", err)
+		logger.Error.Printf("Error on openning database : %v", err)
 	}
 	db = d
 
 	_, err = db.Exec(createDatabaseStmt)
 	if err != nil {
-		logger.Error.Printf("Failed to create table", err)
+		logger.Error.Printf("Failed to create table : %v", err)
 	}
 }
 
@@ -60,7 +60,7 @@ func (newLine *DatabaseLine) AddLine() bool {
 
 	stmt, err := db.Prepare(insertDatabaseStmt)
 	if err != nil {
-		logger.Error.Printf("Error on insert jid %s", newLine.Jid, err)
+		logger.Error.Printf("Error on insert jid %s : %v", newLine.Jid, err)
 		return false
 	}
 	defer stmt.Close()
@@ -70,7 +70,7 @@ func (newLine *DatabaseLine) AddLine() bool {
 	}
 	_, err = stmt.Exec(newLine.Jid, newLine.SteamLogin, newLine.SteamPwd, debug)
 	if err != nil {
-		logger.Error.Printf("Error on creating SQL statement", err)
+		logger.Error.Printf("Error on creating SQL statement : %v", err)
 		return false
 	}
 
@@ -81,7 +81,7 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 	logger.Info.Printf("Update line %s", newLine.Jid)
 	stmt, err := db.Prepare(updateDatabaseStmt)
 	if err != nil {
-		logger.Error.Printf("Error on update ", err)
+		logger.Error.Printf("Error on update : %v", err)
 		return false
 	}
 	defer stmt.Close()
@@ -95,7 +95,7 @@ func (newLine *DatabaseLine) UpdateLine() bool {
 	}
 	_, err = stmt.Exec(newLine.SteamLogin, newLine.SteamPwd, debug, newLine.Jid)
 	if err != nil {
-		logger.Error.Printf("Error on updating SQL statement", err)
+		logger.Error.Printf("Error on updating SQL statement : %v", err)
 		return false
 	}
 
@@ -123,19 +123,19 @@ func RemoveLine(jid string) bool {
 	logger.Info.Printf("Remove line %s", jid)
 	stmt, err := db.Prepare(deleteDatabaseStmt)
 	if err != nil {
-		logger.Error.Printf("Error on delete jid %s", jid, err)
+		logger.Error.Printf("Error on delete jid %s : %v", jid, err)
 		return false
 	}
 	defer stmt.Close()
 	res, err := stmt.Exec(jid)
 	if err != nil {
-		logger.Error.Printf("Error on delete SQL statement", err)
+		logger.Error.Printf("Error on delete SQL statement : %v", err)
 		return false
 	}
 
 	affect, err := res.RowsAffected()
 	if err != nil {
-		logger.Error.Printf("Error on delete SQL statement", err)
+		logger.Error.Printf("Error on delete SQL statement : %v", err)
 		return false
 	}
 	if affect == 0 {
@@ -163,14 +163,14 @@ func getLine(jid string) *DatabaseLine {
 
 	stmt, err := db.Prepare(selectDatabaseStmt)
 	if err != nil {
-		logger.Error.Printf("Error on select line", err)
+		logger.Error.Printf("Error on select line : %v", err)
 		return nil
 	}
 	defer stmt.Close()
 	debug := 0
 	err = stmt.QueryRow(jid).Scan(&ret.Jid, &ret.SteamLogin, &ret.SteamPwd, &debug)
 	if err != nil {
-		logger.Error.Printf("Error on select scan", err)
+		logger.Error.Printf("Error on select scan : %v", err)
 		return nil
 	}
 	if debug == 1 {
@@ -188,7 +188,7 @@ func GetAllLines() []DatabaseLine {
 
 	rows, err := db.Query(selectAllDatabaseStmt)
 	if err != nil {
-		logger.Error.Printf("Error on select query", err)
+		logger.Error.Printf("Error on select query : %v", err)
 	}
 	defer rows.Close()
 	for rows.Next() {

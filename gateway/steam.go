@@ -66,12 +66,12 @@ func (g *GatewayInfo) mainSteam() {
 			g.SendXmppMessage(XmppJidComponent, "", "Connected on Steam network")
 
 		case *steam.LoggedOffEvent:
-			logger.Error.Printf("[%s] LoggedOffEvent: ", g.XMPP_JID_Client, e)
+			logger.Error.Printf("[%s] LoggedOffEvent: %v", g.XMPP_JID_Client, e)
 			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Disconnected of Steam network (%v)", e))
 			g.SteamConnecting = false
 
 		case steam.FatalErrorEvent:
-			logger.Error.Printf("[%s] FatalError: ", g.XMPP_JID_Client, e)
+			logger.Error.Printf("[%s] FatalError: %v", g.XMPP_JID_Client, e)
 			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Steam Fatal Error : %v", e))
 			g.DisconnectAllSteamFriend()
 			g.SteamConnecting = false
@@ -83,11 +83,11 @@ func (g *GatewayInfo) mainSteam() {
 			g.SteamConnecting = false
 
 		case error:
-			logger.Error.Printf("[%s] ", g.XMPP_JID_Client, e)
+			logger.Error.Printf("[%s] error: %v", g.XMPP_JID_Client, e)
 			g.SendXmppMessage(XmppJidComponent, "", "Steam Error : "+e.Error())
 
 		case *steam.LogOnFailedEvent:
-			logger.Error.Printf("[%s] Login failed", g.XMPP_JID_Client, e)
+			logger.Error.Printf("[%s] Login failed: %v", g.XMPP_JID_Client, e)
 			g.SendXmppMessage(XmppJidComponent, "", fmt.Sprintf("Login failed : %v", e.Result))
 			g.SteamConnecting = false
 
