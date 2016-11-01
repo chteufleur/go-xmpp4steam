@@ -282,7 +282,7 @@ func execCommandAdHoc(iq *xmpp.Iq) {
 			}
 			if message != "" {
 				// Succeeded
-				for userJID, _ := range MapGatewayInfo {
+				for userJID := range MapGatewayInfo {
 					SendMessage(userJID, "", message)
 				}
 				note.Value = "Message sended to all registered users"

@@ -226,7 +226,7 @@ func (g *GatewayInfo) SteamDisconnect() {
 
 func (g *GatewayInfo) DisconnectAllSteamFriend() {
 	logger.Debug.Printf("[%s] Disconnect all Steam friend", g.XMPP_JID_Client)
-	for sid, _ := range g.FriendSteamId {
+	for sid := range g.FriendSteamId {
 		g.SendXmppPresence(Status_offline, Type_unavailable, "", sid+"@"+XmppJidComponent, "", "")
 		delete(g.FriendSteamId, sid)
 	}

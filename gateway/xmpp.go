@@ -230,7 +230,7 @@ func (g *GatewayInfo) addUserIntoRoster(jid, nick string) {
 
 func (g *GatewayInfo) removeAllUserFromRoster() {
 	// Friends
-	for steamId, _ := range g.SteamClient.Social.Friends.GetCopy() {
+	for steamId := range g.SteamClient.Social.Friends.GetCopy() {
 		iq := xmpp.Iq{To: g.XMPP_JID_Client, Type: xmpp.IQTypeSet, Id: NextIqId()}
 		query := &xmpp.RosterQuery{}
 		query.Items = append(query.Items, *&xmpp.RosterItem{JID: steamId.ToString() + "@" + XmppJidComponent, Subscription: xmpp.RosterSubscriptionRemove})
