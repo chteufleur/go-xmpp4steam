@@ -127,8 +127,8 @@ func (g *GatewayInfo) ReceivedXMPP_Message(message *xmpp.Message) {
 	} else if message.Gone != nil {
 		g.SendSteamMessageLeaveConversation(steamID)
 	} else {
-		if message.Body != "" {
-			g.SendSteamMessage(steamID, message.Body)
+		if message.Body != nil && len(message.Body) != 0 {
+			g.SendSteamMessage(steamID, message.Body[0].Value)
 		}
 	}
 }
@@ -338,7 +338,9 @@ func (g *GatewayInfo) chatstatesNotification() {
 
 func (g *GatewayInfo) sendXmppMessage(from, subject, message string, chatState interface{}) {
 	if from != XmppJidComponent || from == XmppJidComponent && g.DebugMessage {
-		m := xmpp.Message{To: g.XMPP_JID_Client, From: from, Body: message, Type: "chat"}
+		m := xmpp.Message{To: g.XMPP_JID_Client, From: from, Type: "chat"}
+		mBody := xmpp.MessageBody{Value: message}
+		m.Body = append(m.Body, mBody)
 
 		if subject != "" {
 			m.Subject = subject

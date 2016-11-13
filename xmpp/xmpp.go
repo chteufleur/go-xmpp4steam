@@ -257,7 +257,9 @@ func SendPresence(status, tpye, from, to, message, nick string) {
 }
 
 func SendMessage(to, subject, message string) {
-	m := xmpp.Message{From: jid.Domain, To: to, Body: message, Type: "chat"}
+	m := xmpp.Message{From: jid.Domain, To: to, Type: "chat"}
+	mBody := xmpp.MessageBody{Value: message}
+	m.Body = append(m.Body, mBody)
 
 	if subject != "" {
 		m.Subject = subject
