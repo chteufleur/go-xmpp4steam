@@ -284,24 +284,30 @@ func (g *GatewayInfo) chatstatesNotification() {
 		switch chatstate {
 		case "stop":
 			if okInactive {
-				if !timerInactive.Stop() {
-					<-timerInactive.C
+				if timerInactive != nil {
+					if !timerInactive.Stop() {
+						<-timerInactive.C
+					}
+					delete(inactiveTimers, jid)
 				}
-				delete(inactiveTimers, jid)
 			}
 			if okPaused {
-				if !timerPaused.Stop() {
-					<-timerPaused.C
+				if timerPaused != nil {
+					if !timerPaused.Stop() {
+						<-timerPaused.C
+					}
+					delete(pausedTimers, jid)
 				}
-				delete(pausedTimers, jid)
 			}
 
 		case "paused":
 			if okInactive {
-				if !timerPaused.Stop() {
-					<-timerPaused.C
+				if timerPaused != nil {
+					if !timerPaused.Stop() {
+						<-timerPaused.C
+					}
+					timerPaused.Reset(20 * time.Second)
 				}
-				timerPaused.Reset(20 * time.Second)
 			} else {
 				timerPaused = time.AfterFunc(20*time.Second, func() {
 					g.sendXmppMessage(jid, "", "", &xmpp.Paused{})
@@ -312,10 +318,12 @@ func (g *GatewayInfo) chatstatesNotification() {
 
 		case "inactive":
 			if okInactive {
-				if !timerInactive.Stop() {
-					<-timerInactive.C
+				if timerInactive != nil {
+					if !timerInactive.Stop() {
+						<-timerInactive.C
+					}
+					timerInactive.Reset(120 * time.Second)
 				}
-				timerInactive.Reset(120 * time.Second)
 			} else {
 				timerInactive = time.AfterFunc(120*time.Second, func() {
 					g.sendXmppMessage(jid, "", "", &xmpp.Inactive{})
