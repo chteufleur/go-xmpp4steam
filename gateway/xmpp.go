@@ -83,6 +83,9 @@ func (g *GatewayInfo) ReceivedXMPP_Presence(presence *xmpp.Presence) {
 				g.Disconnect()
 			}
 		} else {
+			if presence.Type == Type_available {
+				g.addUserIntoRoster(presence.To, "xmpp4steam gateway")
+			}
 			go g.SteamConnect()
 			transfertPresence = true
 		}
