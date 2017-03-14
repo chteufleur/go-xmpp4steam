@@ -64,8 +64,8 @@ func mainXMPP() {
 			jidBareTo := strings.SplitN(v.To, "/", 2)[0]
 			g := MapGatewayInfo[jidBareFrom]
 			if g != nil {
-				if jidBareTo == jid.Domain {
-					// Forward only if presence is for component, in order to to not spam set presence on Steam
+				if jidBareTo == jid.Domain || v.Type == gateway.Type_probe {
+					// Forward only if presence is for component or is type probe, in order not to spam set presence on Steam
 					logger.Debug.Printf("Presence transferred to %s", jidBareFrom)
 					go g.ReceivedXMPP_Presence(v)
 				}
